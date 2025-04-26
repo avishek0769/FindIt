@@ -1,0 +1,55 @@
+// Tabs.js
+import React from 'react';
+import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
+import Icon from 'react-native-vector-icons/MaterialIcons';
+import Home from './src/screens/Home';
+import LostItemsScreen from './src/screens/LostItemsScreen';
+import FoundItemsScreen from './src/screens/FoundItemsScreen';
+import About from './src/screens/About';
+
+const Tab = createBottomTabNavigator();
+
+export default function Tabs() {
+    return (
+        <Tab.Navigator
+            screenOptions={({ route }) => ({
+                headerShown: false,
+                tabBarIcon: ({ color }) => {
+                    let iconName;
+
+                    switch (route.name) {
+                        case 'Home':
+                            iconName = 'home';
+                            break;
+                        case 'Lost Items':
+                            iconName = 'cancel';
+                            break;
+                        case 'Found Items':
+                            iconName = 'search';
+                            break;
+                        case 'About':
+                            iconName = 'info';
+                            break;
+                    }
+
+                    return <Icon name={iconName} size={28} color={color} />;
+                },
+                tabBarActiveTintColor: "#000",
+                tabBarInactiveTintColor: 'gray',
+                tabBarLabelStyle: {
+                    fontSize: 14,
+                    fontWeight: '600',
+                    letterSpacing: 0.5,
+                },
+                tabBarStyle: {
+                    height: 58
+                }
+            })}
+        >
+            <Tab.Screen name="Home" component={Home} />
+            <Tab.Screen name="Lost Items" component={LostItemsScreen} />
+            <Tab.Screen name="Found Items" component={FoundItemsScreen} />
+            <Tab.Screen name="About" component={About} />
+        </Tab.Navigator>
+    );
+}
