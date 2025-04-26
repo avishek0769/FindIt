@@ -11,7 +11,7 @@ export default function About() {
                 <View style={styles.section}>
                     <Text style={styles.sectionTitle}>About the App</Text>
                     <Text style={styles.description}>
-                        FindIt is a community-driven lost and found platform designed specifically for the students of our college.
+                        FindIt is a community-driven lost and found platform designed specifically for the students of NSHM College of Management & Technology.
                     </Text>
                     <Text style={[styles.description, { marginTop: 10 }]}>
                         Our mission is to create a simple, reliable, and collaborative system within the college campus, allowing everyone to report lost items quickly and help others reconnect with their belongings.

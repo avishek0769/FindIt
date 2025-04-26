@@ -1,4 +1,4 @@
-import { StyleSheet, Text, View, ScrollView, Image } from 'react-native'
+import { StyleSheet, Text, View, ScrollView, Image, ActivityIndicator } from 'react-native'
 import React, { useCallback, useState } from 'react'
 import { useFocusEffect } from '@react-navigation/native';
 import '@react-native-firebase/app';
@@ -7,6 +7,7 @@ import firestore from '@react-native-firebase/firestore';
 
 export default function FoundItemsScreen() {
     const [foundItems, setfoundItems] = useState([])
+    const [isFetching, setIsFetching] = useState(true)
 
     useFocusEffect(
         useCallback(() => {
@@ -23,6 +24,9 @@ export default function FoundItemsScreen() {
                 catch (error) {
                     console.error('Error fetching lost items: ', error);
                 }
+                finally {
+                    setIsFetching(false);
+                }
             }
 
             fetchFoundItems();
@@ -35,6 +39,8 @@ export default function FoundItemsScreen() {
             <View style={styles.headerContainer}>
                 <Text style={styles.heading}>Found Items</Text>
             </View>
+
+            {isFetching && <ActivityIndicator size={50} style={{marginTop: 30}} />}
 
             <ScrollView style={styles.scrollView}>
                 {foundItems.map(item => (
