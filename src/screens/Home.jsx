@@ -119,8 +119,8 @@ export default function Home() {
                 number: number.trim(),
 
                 ...(itemStatus === 'lost' && {
-                    course: course.trim(),
-                    year: selectedYear,
+                    course: course?.trim() || null,
+                    year: selectedYear.length > 0 ? selectedYear : null,
                     dateLost: date.toISOString(),
                     timeLost: time.toLocaleTimeString()
                 })
@@ -254,8 +254,8 @@ export default function Home() {
                         ) : (
                             <View style={styles.uploadPlaceholder}>
                                 <Text style={styles.uploadIcon}>📤</Text>
-                                <Text style={styles.imagePickerText}>Tap to upload an image</Text>
-                                {itemStatus == "lost" && <Text style={styles.imagePickerSubText}>(optional)</Text>}
+                                <Text style={styles.imagePickerText}>Tap to upload an image (optional)</Text>
+                                {itemStatus == "lost" && <Text style={styles.imagePickerSubText}>Try to give a landscape image</Text>}
                             </View>
                         )}
                     </Pressable>
