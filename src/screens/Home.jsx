@@ -5,6 +5,8 @@ import DatePicker from 'react-native-date-picker';
 import '@react-native-firebase/app';
 import firestore from '@react-native-firebase/firestore';
 import { CLOUDINARY_CLOUD_NAME, CLOUDINARY_UPLOAD_PRESET, CLOUDINARY_URL } from "@env"
+import { Picker } from '@react-native-picker/picker';
+import ModalPopup from '../components/ModalPopUp';
 
 
 export default function Home() {
@@ -17,30 +19,65 @@ export default function Home() {
     const [openTime, setOpenTime] = useState(false)
     const [selectedImage, setSelectedImage] = useState(null);
     const [email, setEmail] = useState('');
+    const [fullname, setFullname] = useState('');
+    const [number, setNumber] = useState('');
+    const [course, setCourse] = useState('');
+    const [selectedYear, setSelectedYear] = useState('');
     const [isSubmitting, setIsSubmitting] = useState(false);
-
+    const [modalVisible, setModalVisible] = useState(false);
+    const [modalConfig, setModalConfig] = useState({
+        type: 'success',
+        title: '',
+        message: ''
+    });
 
     const validateForm = () => {
         if (!description.trim()) {
-            Alert.alert('Error', 'Please enter a description');
+            setModalConfig({
+                type: 'error',
+                title: 'Missing Description',
+                message: 'Please enter a description of the item'
+            });
+            setModalVisible(true);
             return false;
         }
         if (!location.trim()) {
-            Alert.alert('Error', 'Please enter a location');
+            setModalConfig({
+                type: 'error',
+                title: 'Missing Location',
+                message: 'Please enter where the item was lost/found'
+            });
+            setModalVisible(true);
             return false;
         }
         if (!email.trim()) {
-            Alert.alert('Error', 'Please enter an email address');
+            setModalConfig({
+                type: 'error',
+                title: 'Missing Email',
+                message: 'Please enter your email address for contact'
+            });
+            setModalVisible(true);
             return false;
         }
         if (itemStatus === 'found' && !selectedImage) {
-            Alert.alert('Error', 'Please select an image');
+            setModalConfig({
+                type: 'error',
+                title: 'Image Required',
+                message: 'Please upload an image of the found item'
+            });
+            setModalVisible(true);
             return false;
         }
+
         // Basic email validation
         const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
         if (!emailRegex.test(email.trim())) {
-            Alert.alert('Error', 'Please enter a valid email address');
+            setModalConfig({
+                type: 'error',
+                title: 'Invalid Email',
+                message: 'Please enter a valid email address'
+            });
+            setModalVisible(true);
             return false;
         }
         return true;
@@ -74,47 +111,43 @@ export default function Home() {
             }
 
             const itemData = {
+                fullname: fullname.trim(),
                 description: description.trim(),
                 location: location.trim(),
-                contact: email.trim(),
                 image: uploadedImageUrl,
+                email: email.trim(),
+                number: number.trim(),
+
                 ...(itemStatus === 'lost' && {
+                    course: course.trim(),
+                    year: selectedYear,
                     dateLost: date.toISOString(),
                     timeLost: time.toLocaleTimeString()
                 })
             };
             console.log('Submitting item:', itemData);
 
-            if (itemStatus === 'lost') {
-                const firestoreResponse = await firestore().collection("lostItems").add(itemData)
-                console.log(firestoreResponse)
-            }
-            else {
-                const firestoreResponse = await firestore().collection("foundItems").add(itemData)
-                console.log(firestoreResponse)
-            }
+            // if (itemStatus === 'lost') {
+            //     const firebaseResponse = await firestore().collection("lostItems").add(itemData)
+            // }
+            // else {
+            //     const firebaseResponse = await firestore().collection("foundItems").add(itemData)
+            // }
 
-            Alert.alert(
-                'Success',
-                `Item ${itemStatus === 'lost' ? 'lost' : 'found'} report submitted successfully!`,
-                [
-                    {
-                        text: 'OK',
-                        onPress: () => {
-                            setDescription('');
-                            setLocation('');
-                            setEmail('');
-                            setSelectedImage(null);
-                            setDate(new Date());
-                            setTime(new Date());
-                        }
-                    }
-                ]
-            );
+            setModalConfig({
+                type: 'success',
+                title: 'Success!',
+                message: `Item ${itemStatus === 'lost' ? 'lost' : 'found'} report submitted successfully!`
+            });
+            setModalVisible(true);
         }
         catch (error) {
-            Alert.alert('Error', 'Failed to submit report. Please try again.');
-            console.error('Submit error:', error);
+            setModalConfig({
+                type: 'error',
+                title: 'Error',
+                message: "Failed to submit report. Please try again."
+            });
+            setModalVisible(true);
         }
         finally {
             setIsSubmitting(false);
@@ -162,11 +195,11 @@ export default function Home() {
                 <Text style={styles.subHeading}>Helping you reconnect with your lost or found items easily.</Text>
             </View>
 
-            <Text style={styles.info}>Sumbit your lost / found item report</Text>
+            <Text style={styles.info}>Sumbit your lost item report</Text>
 
             {/* Form */}
             <View style={styles.formContainer}>
-                <View style={styles.toggleContainer}>
+                {/* <View style={styles.toggleContainer}>
                     <Pressable
                         android_ripple={{ color: "#ddd" }}
                         style={[styles.toggleButton, itemStatus === 'lost' && styles.activeButton]}
@@ -192,55 +225,9 @@ export default function Home() {
                             </Text>
                         </View>
                     </Pressable>
-                </View>
-                <View style={styles.formSection}>
-                    <Text style={styles.label}>
-                        <Text style={styles.labelIcon}>📝</Text> Description
-                    </Text>
-                    <TextInput
-                        placeholderTextColor={'#999'}
-                        placeholder="Short description (letters, numbers and basic punctuation only)"
-                        style={[styles.input, styles.descriptionInput]}
-                        value={description}
-                        onChangeText={handleDescriptionChange}
-                        multiline
-                        numberOfLines={3}
-                        maxLength={200}
-                    />
-                    <Text style={styles.charCount}>{description.length}/200</Text>
-                </View>
+                </View> */}
 
-                <View style={styles.formSection}>
-                    <Text style={styles.label}>
-                        <Text style={styles.labelIcon}>📍</Text> Location
-                    </Text>
-                    <TextInput
-                        placeholderTextColor={'#999'}
-                        placeholder={itemStatus === 'found' ? "Where is the item now?" : "Room no / Area last seen"}
-                        style={styles.input}
-                        value={location}
-                        onChangeText={setLocation}
-                    />
-                </View>
-
-                <View style={styles.formSection}>
-                    <Text style={styles.label}>
-                        <Text style={styles.labelIcon}>📧</Text> Contact Information
-                    </Text>
-                    <TextInput
-                        placeholderTextColor={'#999'}
-                        placeholder="Enter your email address / mobile number"
-                        style={styles.input}
-                        value={email}
-                        onChangeText={handleEmailChange}
-                        keyboardType="email-address"
-                        autoCapitalize="none"
-                        autoComplete="email"
-                        autoCorrect={false}
-                    />
-                </View>
-
-                {/* Update the image picker section */}
+                {/* The image picker section */}
                 <View style={styles.formSection}>
                     <Text style={styles.label}>
                         <Text style={styles.labelIcon}>📸</Text> Item Image
@@ -268,54 +255,164 @@ export default function Home() {
                             <View style={styles.uploadPlaceholder}>
                                 <Text style={styles.uploadIcon}>📤</Text>
                                 <Text style={styles.imagePickerText}>Tap to upload an image</Text>
-                                <Text style={styles.imagePickerSubText}>(optional)</Text>
+                                {itemStatus == "lost" && <Text style={styles.imagePickerSubText}>(optional)</Text>}
                             </View>
                         )}
                     </Pressable>
                 </View>
 
+                <View style={styles.formSection}>
+                    <Text style={styles.label}>
+                        <Text style={styles.labelIcon}>📝</Text> Description
+                    </Text>
+                    <TextInput
+                        placeholderTextColor={'#999'}
+                        placeholder="Short description of the item"
+                        style={[styles.input, styles.descriptionInput]}
+                        value={description}
+                        onChangeText={handleDescriptionChange}
+                        multiline
+                        numberOfLines={3}
+                        maxLength={200}
+                    />
+                    <Text style={styles.charCount}>{description.length}/200</Text>
+                </View>
+
+                <View style={styles.formSection}>
+                    <Text style={styles.label}>
+                        <Text style={styles.labelIcon}>📍</Text> Location
+                    </Text>
+                    <TextInput
+                        placeholderTextColor={'#999'}
+                        placeholder={itemStatus === 'found' ? "Where is the item now?" : "Room no / Area last seen"}
+                        style={styles.input}
+                        value={location}
+                        onChangeText={setLocation}
+                    />
+                </View>
+
+                <View style={styles.formSection}>
+                    <Text style={styles.label}>
+                        <Text style={styles.labelIcon}>👤</Text> Full name
+                    </Text>
+                    <TextInput
+                        placeholderTextColor={'#999'}
+                        placeholder="Enter your full name"
+                        style={styles.input}
+                        value={fullname}
+                        onChangeText={setFullname}
+                        keyboardType="name-phone-pad"
+                    />
+                </View>
+
+                <View style={styles.formSection}>
+                    <Text style={styles.label}>
+                        <Text style={styles.labelIcon}>✉️</Text> Email address
+                    </Text>
+                    <TextInput
+                        placeholderTextColor={'#999'}
+                        placeholder="Enter your email address"
+                        style={styles.input}
+                        value={email}
+                        onChangeText={handleEmailChange}
+                        keyboardType="email-address"
+                        autoCapitalize="none"
+                        autoComplete="email"
+                        autoCorrect={false}
+                    />
+                </View>
+
+                <View style={styles.formSection}>
+                    <Text style={styles.label}>
+                        <Text style={styles.labelIcon}>📱</Text> Phone number
+                    </Text>
+                    <TextInput
+                        placeholderTextColor={'#999'}
+                        placeholder="Enter your phone number"
+                        style={styles.input}
+                        value={number}
+                        onChangeText={setNumber}
+                        keyboardType="number-pad"
+                    />
+                </View>
+
                 {itemStatus === 'lost' && (
-                    <View style={styles.formSection}>
-                        <Text style={styles.label}>
-                            <Text style={styles.labelIcon}>🕒</Text> When was it lost?
-                        </Text>
-                        <Pressable
-                            style={styles.dateTimeButton}
-                            onPress={() => setOpenDate(true)}
-                        >
-                            <Text style={styles.dateTimeText}>{date.toLocaleDateString()}</Text>
-                            <Text style={styles.dateTimeIcon}>📅</Text>
-                        </Pressable>
-
-                        <Pressable
-                            style={styles.dateTimeButton}
-                            onPress={() => setOpenTime(true)}
-                        >
-                            <Text style={styles.dateTimeText}>
-                                {time.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                    <>
+                        <View style={styles.formSection}>
+                            <Text style={styles.label}>
+                                <Text style={styles.labelIcon}>📚</Text> Course (optional)
                             </Text>
-                            <Text style={styles.dateTimeIcon}>⏰</Text>
-                        </Pressable>
+                            <TextInput
+                                placeholderTextColor={'#999'}
+                                placeholder="Enter your course"
+                                style={styles.input}
+                                value={course}
+                                onChangeText={setCourse}
+                                keyboardType="default"
+                            />
+                        </View>
 
-                        <DatePicker
-                            modal
-                            open={openDate}
-                            date={date}
-                            mode="date"
-                            maximumDate={new Date()}
-                            onConfirm={handleDateConfirm}
-                            onCancel={() => setOpenDate(false)}
-                        />
+                        <View style={styles.formSection}>
+                            <Text style={styles.label}>
+                                <Text style={styles.labelIcon}>🎓</Text> Year of study (optional)
+                            </Text>
+                            <View style={styles.pickerContainer}>
+                                <Picker
+                                    selectedValue={selectedYear}
+                                    onValueChange={(itemValue) => setSelectedYear(itemValue)}
+                                    style={styles.picker}
+                                    dropdownIconColor="#666"
+                                >
+                                    <Picker.Item label="Select year" value="" color="#999" />
+                                    <Picker.Item label="1st Year" value="1" />
+                                    <Picker.Item label="2nd Year" value="2" />
+                                    <Picker.Item label="3rd Year" value="3" />
+                                    <Picker.Item label="4th Year" value="4" />
+                                </Picker>
+                            </View>
+                        </View>
+                        <View style={styles.formSection}>
+                            <Text style={styles.label}>
+                                <Text style={styles.labelIcon}>🕒</Text> When was it lost?
+                            </Text>
+                            <Pressable
+                                style={styles.dateTimeButton}
+                                onPress={() => setOpenDate(true)}
+                            >
+                                <Text style={styles.dateTimeText}>{date.toLocaleDateString()}</Text>
+                                <Text style={styles.dateTimeIcon}>📅</Text>
+                            </Pressable>
 
-                        <DatePicker
-                            modal
-                            open={openTime}
-                            date={time}
-                            mode="time"
-                            onConfirm={handleTimeConfirm}
-                            onCancel={() => setOpenTime(false)}
-                        />
-                    </View>
+                            <Pressable
+                                style={styles.dateTimeButton}
+                                onPress={() => setOpenTime(true)}
+                            >
+                                <Text style={styles.dateTimeText}>
+                                    {time.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                </Text>
+                                <Text style={styles.dateTimeIcon}>⏰</Text>
+                            </Pressable>
+
+                            <DatePicker
+                                modal
+                                open={openDate}
+                                date={date}
+                                mode="date"
+                                maximumDate={new Date()}
+                                onConfirm={handleDateConfirm}
+                                onCancel={() => setOpenDate(false)}
+                            />
+
+                            <DatePicker
+                                modal
+                                open={openTime}
+                                date={time}
+                                mode="time"
+                                onConfirm={handleTimeConfirm}
+                                onCancel={() => setOpenTime(false)}
+                            />
+                        </View>
+                    </>
                 )}
 
                 <Pressable
@@ -339,6 +436,15 @@ export default function Home() {
                     </View>
                 </Pressable>
             </View>
+
+            {/* Message Pop up */}
+            <ModalPopup
+                visible={modalVisible}
+                type={modalConfig.type}
+                title={modalConfig.title}
+                message={modalConfig.message}
+                onClose={() => setModalVisible(false)}
+            />
         </ScrollView>
     );
 }
@@ -352,9 +458,11 @@ const styles = StyleSheet.create({
     },
     headerContainer: {
         backgroundColor: '#fff',
-        padding: 20,
+        padding: 10,
         borderRadius: 15,
         marginBottom: 20,
+        borderBottomWidth: 1,
+        borderBottomColor: "#ddd",
     },
     heading: {
         fontSize: 36,
@@ -375,7 +483,8 @@ const styles = StyleSheet.create({
         fontWeight: '600',
         color: '#2c3e50',
         marginBottom: 10,
-        textAlign: 'center',
+        paddingLeft: 5
+        // textAlign: 'center',
     },
     toggleContainer: {
         flexDirection: 'row',
@@ -570,5 +679,17 @@ const styles = StyleSheet.create({
         color: '#fff',
         fontSize: 18,
         fontWeight: 'bold',
+    },
+    pickerContainer: {
+        borderWidth: 1.5,
+        borderColor: '#e0e0e0',
+        borderRadius: 12,
+        backgroundColor: '#fff',
+        overflow: 'hidden',
+    },
+    picker: {
+        height: 50,
+        width: '100%',
+        color: '#2c3e50',
     },
 });
