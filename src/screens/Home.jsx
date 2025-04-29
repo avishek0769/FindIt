@@ -85,7 +85,7 @@ export default function Home() {
             };
             console.log('Submitting item:', itemData);
 
-            if(itemStatus === 'lost') {
+            if (itemStatus === 'lost') {
                 const firestoreResponse = await firestore().collection("lostItems").add(itemData)
                 console.log(firestoreResponse)
             }
@@ -157,103 +157,144 @@ export default function Home() {
 
     return (
         <ScrollView style={styles.container}>
-            <Text style={styles.heading}>FindIt</Text>
-            <Text style={styles.subHeading}>Helping you reconnect with your lost or found items easily.</Text>
-
-            {/* Toggle Buttons */}
-            <View style={styles.toggleContainer}>
-                <Pressable android_ripple={{ color: "#ddd" }}
-                    style={[styles.toggleButton, itemStatus === 'lost' && styles.activeButton]}
-                    onPress={() => setItemStatus('lost')}
-                >
-                    <Text style={itemStatus === 'lost' ? styles.activeButtonText : styles.toggleButtonText}>
-                        Item Lost
-                    </Text>
-                </Pressable>
-
-                <Pressable android_ripple={{ color: "#ddd" }}
-                    style={[styles.toggleButton, itemStatus === 'found' && styles.activeButton]}
-                    onPress={() => setItemStatus('found')}
-                >
-                    <Text style={itemStatus === 'found' ? styles.activeButtonText : styles.toggleButtonText}>
-                        Item Found
-                    </Text>
-                </Pressable>
+            <View style={styles.headerContainer}>
+                <Text style={styles.heading}>FindIt</Text>
+                <Text style={styles.subHeading}>Helping you reconnect with your lost or found items easily.</Text>
             </View>
 
+            <Text style={styles.info}>Sumbit your lost / found item report</Text>
+
             {/* Form */}
-            <View style={styles.form}>
-                <Text style={styles.label}>Description</Text>
-                <TextInput
-                    placeholderTextColor={'#999'}
-                    placeholder="Short description (letters, numbers and basic punctuation only)"
-                    style={[styles.input, styles.descriptionInput]}
-                    value={description}
-                    onChangeText={handleDescriptionChange}
-                    multiline
-                    numberOfLines={3}
-                    maxLength={200}
-                />
-
-                <Text style={styles.label}>Location</Text>
-                <TextInput
-                    placeholderTextColor={'#999'}
-                    placeholder={itemStatus === 'found' ? "Where is the item now?" : "Room no / Area last seen"}
-                    style={styles.input}
-                    value={location}
-                    onChangeText={setLocation}
-                />
-
-                <Text style={styles.label}>Email Address / Mobile number</Text>
-                <TextInput
-                    placeholderTextColor={'#999'}
-                    placeholder="Enter your email address / mobile number"
-                    style={styles.input}
-                    value={email}
-                    onChangeText={handleEmailChange}
-                    keyboardType="email-address"
-                    autoCapitalize="none"
-                    autoComplete="email"
-                    autoCorrect={false}
-                />
-
-                <Text style={styles.label}>Item Image</Text>
-                <Pressable android_ripple={{ color: "#ddd" }} style={styles.imagePicker} onPress={handleImagePick}>
-                    {selectedImage ? (
-                        <View style={styles.selectedImageContainer}>
-                            <Image
-                                source={{ uri: selectedImage.uri }}
-                                style={styles.previewImage}
-                                resizeMode="contain"
-                            />
-                            <TouchableOpacity
-                                style={styles.removeButton}
-                                onPress={() => setSelectedImage(null)}
-                            >
-                                <Text style={styles.removeButtonText}>×</Text>
-                            </TouchableOpacity>
+            <View style={styles.formContainer}>
+                <View style={styles.toggleContainer}>
+                    <Pressable
+                        android_ripple={{ color: "#ddd" }}
+                        style={[styles.toggleButton, itemStatus === 'lost' && styles.activeButton]}
+                        onPress={() => setItemStatus('lost')}
+                    >
+                        <View style={styles.toggleButtonContent}>
+                            <Text style={[styles.toggleIcon, itemStatus === 'lost' && styles.activeIcon]}>🔍</Text>
+                            <Text style={[styles.toggleButtonText, itemStatus === 'lost' && styles.activeButtonText]}>
+                                Lost Item
+                            </Text>
                         </View>
-                    ) : (
-                        <Text style={styles.imagePickerText}>Upload an Image (optional)</Text>
-                    )}
-                </Pressable>
+                    </Pressable>
+
+                    <Pressable
+                        android_ripple={{ color: "#ddd" }}
+                        style={[styles.toggleButton, itemStatus === 'found' && styles.activeButton]}
+                        onPress={() => setItemStatus('found')}
+                    >
+                        <View style={styles.toggleButtonContent}>
+                            <Text style={[styles.toggleIcon, itemStatus === 'found' && styles.activeIcon]}>✨</Text>
+                            <Text style={[styles.toggleButtonText, itemStatus === 'found' && styles.activeButtonText]}>
+                                Found Item
+                            </Text>
+                        </View>
+                    </Pressable>
+                </View>
+                <View style={styles.formSection}>
+                    <Text style={styles.label}>
+                        <Text style={styles.labelIcon}>📝</Text> Description
+                    </Text>
+                    <TextInput
+                        placeholderTextColor={'#999'}
+                        placeholder="Short description (letters, numbers and basic punctuation only)"
+                        style={[styles.input, styles.descriptionInput]}
+                        value={description}
+                        onChangeText={handleDescriptionChange}
+                        multiline
+                        numberOfLines={3}
+                        maxLength={200}
+                    />
+                    <Text style={styles.charCount}>{description.length}/200</Text>
+                </View>
+
+                <View style={styles.formSection}>
+                    <Text style={styles.label}>
+                        <Text style={styles.labelIcon}>📍</Text> Location
+                    </Text>
+                    <TextInput
+                        placeholderTextColor={'#999'}
+                        placeholder={itemStatus === 'found' ? "Where is the item now?" : "Room no / Area last seen"}
+                        style={styles.input}
+                        value={location}
+                        onChangeText={setLocation}
+                    />
+                </View>
+
+                <View style={styles.formSection}>
+                    <Text style={styles.label}>
+                        <Text style={styles.labelIcon}>📧</Text> Contact Information
+                    </Text>
+                    <TextInput
+                        placeholderTextColor={'#999'}
+                        placeholder="Enter your email address / mobile number"
+                        style={styles.input}
+                        value={email}
+                        onChangeText={handleEmailChange}
+                        keyboardType="email-address"
+                        autoCapitalize="none"
+                        autoComplete="email"
+                        autoCorrect={false}
+                    />
+                </View>
+
+                {/* Update the image picker section */}
+                <View style={styles.formSection}>
+                    <Text style={styles.label}>
+                        <Text style={styles.labelIcon}>📸</Text> Item Image
+                    </Text>
+                    <Pressable
+                        android_ripple={{ color: "#ddd" }}
+                        style={[styles.imagePicker, selectedImage && styles.imagePickerWithImage]}
+                        onPress={handleImagePick}
+                    >
+                        {selectedImage ? (
+                            <View style={styles.selectedImageContainer}>
+                                <Image
+                                    source={{ uri: selectedImage.uri }}
+                                    style={styles.previewImage}
+                                    resizeMode="contain"
+                                />
+                                <Pressable
+                                    style={styles.removeButton}
+                                    onPress={() => setSelectedImage(null)}
+                                >
+                                    <Text style={styles.removeButtonText}>×</Text>
+                                </Pressable>
+                            </View>
+                        ) : (
+                            <View style={styles.uploadPlaceholder}>
+                                <Text style={styles.uploadIcon}>📤</Text>
+                                <Text style={styles.imagePickerText}>Tap to upload an image</Text>
+                                <Text style={styles.imagePickerSubText}>(optional)</Text>
+                            </View>
+                        )}
+                    </Pressable>
+                </View>
 
                 {itemStatus === 'lost' && (
-                    <>
-                        <Text style={styles.label}>Date Lost</Text>
+                    <View style={styles.formSection}>
+                        <Text style={styles.label}>
+                            <Text style={styles.labelIcon}>🕒</Text> When was it lost?
+                        </Text>
                         <Pressable
                             style={styles.dateTimeButton}
                             onPress={() => setOpenDate(true)}
                         >
-                            <Text>{date.toLocaleDateString()}</Text>
+                            <Text style={styles.dateTimeText}>{date.toLocaleDateString()}</Text>
+                            <Text style={styles.dateTimeIcon}>📅</Text>
                         </Pressable>
 
-                        <Text style={styles.label}>Time Lost</Text>
                         <Pressable
                             style={styles.dateTimeButton}
                             onPress={() => setOpenTime(true)}
                         >
-                            <Text>{time.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</Text>
+                            <Text style={styles.dateTimeText}>
+                                {time.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                            </Text>
+                            <Text style={styles.dateTimeIcon}>⏰</Text>
                         </Pressable>
 
                         <DatePicker
@@ -274,12 +315,11 @@ export default function Home() {
                             onConfirm={handleTimeConfirm}
                             onCancel={() => setOpenTime(false)}
                         />
-                    </>
+                    </View>
                 )}
 
-                {/* Submit Button */}
                 <Pressable
-                    android_ripple={{ color: "#ddd" }}
+                    android_ripple={{ color: "#1a572f" }}
                     style={[
                         styles.submitButton,
                         isSubmitting && styles.submitButtonDisabled
@@ -287,12 +327,16 @@ export default function Home() {
                     onPress={handleSubmit}
                     disabled={isSubmitting}
                 >
-                    {isSubmitting ?
-                        <ActivityIndicator size={23} color={"white"} /> :
-                        <Text style={styles.submitButtonText}>
-                            Report Item
-                        </Text>
-                    }
+                    <View style={styles.submitButtonContent}>
+                        {isSubmitting ? (
+                            <ActivityIndicator size={24} color="#fff" />
+                        ) : (
+                            <>
+                                <Text style={styles.submitButtonText}>Report Item</Text>
+                                <Text style={styles.submitButtonIcon}>📢</Text>
+                            </>
+                        )}
+                    </View>
                 </Pressable>
             </View>
         </ScrollView>
@@ -304,121 +348,221 @@ const styles = StyleSheet.create({
         flex: 1,
         padding: 20,
         backgroundColor: '#fff',
-        paddingBottom: 400
+        paddingBottom: 400,
+    },
+    headerContainer: {
+        backgroundColor: '#fff',
+        padding: 20,
+        borderRadius: 15,
+        marginBottom: 20,
     },
     heading: {
-        fontSize: 32,
-        fontWeight: '700',
-        marginBottom: 10,
-        color: '#333',
+        fontSize: 36,
+        fontWeight: '800',
+        color: '#1a73e8',
+        marginBottom: 8,
+        textAlign: 'center',
     },
     subHeading: {
         fontSize: 16,
         color: '#666',
-        marginBottom: 30,
+        marginBottom: 10,
+        textAlign: 'center',
+        lineHeight: 22,
+    },
+    info: {
+        fontSize: 18,
+        fontWeight: '600',
+        color: '#2c3e50',
+        marginBottom: 10,
+        textAlign: 'center',
     },
     toggleContainer: {
         flexDirection: 'row',
-        justifyContent: 'center',
-        marginBottom: 20,
+        justifyContent: 'space-between',
+        paddingHorizontal: 10,
+        gap: 5,
+        marginBottom: 25
     },
     toggleButton: {
-        paddingVertical: 10,
-        paddingHorizontal: 20,
-        backgroundColor: '#eee',
-        borderRadius: 20,
-        marginHorizontal: 10,
+        flex: 0.48,
+        paddingVertical: 15,
+        paddingHorizontal: 15,
+        backgroundColor: '#f5f5f5',
+        borderRadius: 12,
+        borderWidth: 1,
+        borderColor: '#e0e0e0',
     },
-    activeButton: {
-        backgroundColor: '#007bff',
+    toggleButtonContent: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    toggleIcon: {
+        fontSize: 20,
+        marginRight: 8,
+        opacity: 0.7,
+    },
+    activeIcon: {
+        opacity: 1,
     },
     toggleButtonText: {
         fontSize: 16,
-        color: '#555',
+        color: '#666',
+        fontWeight: '500',
+    },
+    activeButton: {
+        backgroundColor: '#1a73e8',
+        borderColor: '#1a73e8',
+        transform: [{ scale: 1.02 }],
     },
     activeButtonText: {
-        fontSize: 16,
         color: '#fff',
         fontWeight: '600',
     },
-    form: {
-        marginTop: 10,
+    formContainer: {
+        backgroundColor: '#fff',
+        borderRadius: 15,
+        padding: 20,
+        marginTop: 20,
+        marginBottom: 40,
+        shadowColor: '#000',
+        shadowOffset: {
+            width: 0,
+            height: 2,
+        },
+        shadowOpacity: 0.1,
+        shadowRadius: 4,
+        elevation: 3,
     },
-    input: {
-        borderWidth: 1,
-        borderColor: '#ccc',
-        borderRadius: 10,
-        paddingHorizontal: 15,
-        paddingVertical: 10,
-        marginBottom: 15,
-        fontSize: 16,
-    },
-    descriptionInput: {
-        height: 100,
-        textAlignVertical: 'top',
-        paddingTop: 10,
-    },
-    imagePicker: {
-        backgroundColor: '#f0f0f0',
-        height: 150,
-        borderRadius: 10,
-        justifyContent: 'center',
-        alignItems: 'center',
-        marginBottom: 15,
-    },
-    imagePickerText: {
-        color: '#999',
-        fontSize: 16,
-    },
-    submitButton: {
-        backgroundColor: '#28a745',
-        paddingVertical: 15,
-        borderRadius: 10,
-        alignItems: 'center',
-        marginBottom: 40
-    },
-    submitButtonText: {
-        color: '#fff',
-        fontSize: 18,
-        fontWeight: '600',
+    formSection: {
+        marginBottom: 24,
     },
     label: {
         fontSize: 16,
         fontWeight: '600',
-        color: '#333',
-        marginBottom: 8,
+        color: '#2c3e50',
+        marginBottom: 10,
+        flexDirection: 'row',
+        alignItems: 'center',
+    },
+    labelIcon: {
+        marginRight: 8,
+        fontSize: 18,
+    },
+    input: {
+        borderWidth: 1.5,
+        borderColor: '#e0e0e0',
+        borderRadius: 12,
+        paddingHorizontal: 16,
+        paddingVertical: 12,
+        fontSize: 16,
+        backgroundColor: '#fff',
+        color: '#2c3e50',
+    },
+    descriptionInput: {
+        height: 120,
+        textAlignVertical: 'top',
+        paddingTop: 12,
+    },
+    charCount: {
+        textAlign: 'right',
+        color: '#999',
+        fontSize: 12,
         marginTop: 4,
     },
-    previewImage: {
-        width: '100%',
-        height: '100%',
-        borderRadius: 10,
-    },
-    dateTimeButton: {
-        borderWidth: 1,
-        borderColor: '#ccc',
-        borderRadius: 10,
-        paddingHorizontal: 15,
-        paddingVertical: 12,
-        marginBottom: 15,
-        backgroundColor: '#fff',
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'center',
+    imagePicker: {
+        backgroundColor: '#f8f9fa',
+        height: 200,
+        borderRadius: 12,
+        borderWidth: 2,
+        borderColor: '#e0e0e0',
+        borderStyle: 'dashed',
+        overflow: 'hidden',
     },
     selectedImageContainer: {
         width: '100%',
         height: '100%',
         position: 'relative',
     },
+    previewImage: {
+        width: '100%',
+        height: '100%',
+        borderRadius: 10,
+    },
+    imagePickerWithImage: {
+        borderStyle: 'solid',
+        borderColor: '#1a73e8',
+    },
+    uploadPlaceholder: {
+        flex: 1,
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    uploadIcon: {
+        fontSize: 32,
+        marginBottom: 8,
+    },
+    imagePickerText: {
+        color: '#666',
+        fontSize: 16,
+        marginBottom: 4,
+    },
+    imagePickerSubText: {
+        color: '#999',
+        fontSize: 14,
+    },
+    dateTimeButton: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        backgroundColor: '#fff',
+        borderWidth: 1.5,
+        borderColor: '#e0e0e0',
+        borderRadius: 12,
+        paddingHorizontal: 16,
+        paddingVertical: 12,
+        marginBottom: 12,
+    },
+    dateTimeText: {
+        fontSize: 16,
+        color: '#2c3e50',
+    },
+    dateTimeIcon: {
+        fontSize: 20,
+    },
+    submitButton: {
+        backgroundColor: '#1a73e8',
+        paddingVertical: 16,
+        borderRadius: 12,
+        marginTop: 10,
+        elevation: 2,
+    },
+    submitButtonContent: {
+        flexDirection: 'row',
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    submitButtonText: {
+        color: '#fff',
+        fontSize: 18,
+        fontWeight: '600',
+        marginRight: 8,
+    },
+    submitButtonIcon: {
+        fontSize: 20,
+    },
+    submitButtonDisabled: {
+        backgroundColor: '#90caf9',
+    },
     removeButton: {
         position: 'absolute',
-        top: 10,
-        right: 10,
-        backgroundColor: 'rgba(255, 68, 68, 0.9)',
+        top: 12,
+        right: 12,
+        backgroundColor: 'rgba(244, 67, 54, 0.9)',
         borderRadius: 12,
-        width: 24,
-        height: 24,
+        width: 28,
+        height: 28,
         alignItems: 'center',
         justifyContent: 'center',
     },
@@ -426,9 +570,5 @@ const styles = StyleSheet.create({
         color: '#fff',
         fontSize: 18,
         fontWeight: 'bold',
-        lineHeight: 24,
-    },
-    submitButtonDisabled: {
-        backgroundColor: '#93c5a2',
     },
 });
