@@ -187,9 +187,9 @@ export default function LostItemsScreen() {
                 <Text style={styles.heading}>Lost Items</Text>
             </View>
 
-            {isFetching && <View style={{height: "90%", justifyContent: "center"}}>
+            {isFetching && <View style={{ height: "90%", justifyContent: "center" }}>
                 <ActivityIndicator size={50} style={{ marginTop: 30 }} color={"#1a73e8"} />
-            </View> }
+            </View>}
 
             <ScrollView style={styles.scrollView}>
                 {lostItems.map(item => (
@@ -268,17 +268,21 @@ export default function LostItemsScreen() {
                                         </Pressable>
                                     </View>
 
-                                    {item.course && (
+                                    {(item.course || item.year) && (
                                         <View style={styles.infoSection}>
                                             <Text style={styles.sectionTitle}>Student Details</Text>
-                                            <Text style={styles.info}>
-                                                <Text style={styles.label}>📚 Course: </Text>
-                                                {item.course}
-                                            </Text>
-                                            <Text style={styles.info}>
-                                                <Text style={styles.label}>🎓 Year: </Text>
-                                                {item.year}
-                                            </Text>
+                                            {item.course && (
+                                                <Text style={styles.info}>
+                                                    <Text style={styles.label}>📚 Course: </Text>
+                                                    {item.course}
+                                                </Text>
+                                            )}
+                                            {item.year && (
+                                                <Text style={styles.info}>
+                                                    <Text style={styles.label}>🎓 Year: </Text>
+                                                    {item.year}
+                                                </Text>
+                                            )}
                                         </View>
                                     )}
                                 </View>
