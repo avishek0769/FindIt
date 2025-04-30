@@ -105,7 +105,15 @@ export default function LostItemsScreen() {
                 setModalVisible(true)
             }
             else {
-                throw new Error("Verification code does not match")
+                setIsVerificationVisible(false);
+                setTimeout(() => {
+                    setModalConfig({
+                        type: "error",
+                        title: "Error",
+                        message: "Verification code is incorrect"
+                    })
+                    setModalVisible(true)
+                }, 100);
             }
         }
         catch (error) {

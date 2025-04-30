@@ -91,6 +91,7 @@ export default function Home() {
         setIsSubmitting(true);
         try {
             let uploadedImageUrl = null;
+            let verificationCode = Math.floor(Math.random() * (999999 - 100000 + 1)) + 100000;
 
             if (selectedImage) {
                 const data = new FormData();
@@ -120,7 +121,7 @@ export default function Home() {
                 email: email.trim(),
                 number: number.trim(),
                 isFound: false,
-                verificationCode: Math.floor(Math.random() * (999999 - 100000 + 1)) + 100000,
+                verificationCode,
 
                 ...(itemStatus === 'lost' && {
                     course: course?.trim() || null,
@@ -135,23 +136,57 @@ export default function Home() {
                 const collectionRef = collection(db, "lostItems")
                 const firebaseResponse = await addDoc(collectionRef, itemData)
 
-                if(firebaseResponse && firebaseResponse.id){
+                if (firebaseResponse && firebaseResponse.id) {
                     // Send Verification code
+                    const res = await fetch("https://z1v3k1h4-3000.inc1.devtunnels.ms/send-email", {
+                        method: "POST",
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({
+                            to: email,
+                            code: verificationCode
+                        })
+                    })
+                    // console.log(await res.text())
+                    const resendResponse = await res.json()
+                    console.log(resendResponse)
 
-                    setModalConfig({
-                        type: 'success',
-                        title: 'Success!',
-                        message: `Item ${itemStatus === 'lost' ? 'lost' : 'found'} report submitted successfully!`
-                    });
-                    setModalVisible(true);
+                    if (resendResponse.messageId) {
+                        setModalConfig({
+                            type: 'success',
+                            title: 'Success!',
+                            message: `Item ${itemStatus === 'lost' ? 'lost' : 'found'} report submitted successfully!`
+                        });
+                        setModalVisible(true);
+                        setSelectedImage(null);
+                        setDescription('');
+                        setLocation('');
+                        setDate(new Date());
+                        setTime(new Date());
+                        setEmail('');
+                        setFullname('');
+                        setNumber('');
+                        setCourse('');
+                        setSelectedYear('');
+                        setItemStatus('lost');
+                    }
+                    else {
+                        setModalConfig({
+                            type: 'warning',
+                            title: 'Warning',
+                            message: "Report submitted, but an error occured while sending the email"
+                        });
+                        setModalVisible(true);
+                    }
                 }
             }
             else {
                 // const firebaseResponse = await firestore().collection("foundItems").add(itemData)
-            }   
+            }
         }
         catch (error) {
-            console.log(error)
+            console.error(error)
             setModalConfig({
                 type: 'error',
                 title: 'Error',
