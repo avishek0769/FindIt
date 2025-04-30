@@ -3,11 +3,13 @@ import React, { useState } from 'react';
 import { pick, types } from '@react-native-documents/picker';
 import DatePicker from 'react-native-date-picker';
 import '@react-native-firebase/app';
-import firestore from '@react-native-firebase/firestore';
+import firestore, { addDoc, collection, getFirestore } from '@react-native-firebase/firestore';
 import { CLOUDINARY_CLOUD_NAME, CLOUDINARY_UPLOAD_PRESET, CLOUDINARY_URL } from "@env"
 import { Picker } from '@react-native-picker/picker';
 import ModalPopup from '../components/ModalPopUp';
+import { getApp } from '@react-native-firebase/app';
 
+const db = getFirestore(getApp())
 
 export default function Home() {
     const [itemStatus, setItemStatus] = useState('lost');
@@ -117,6 +119,8 @@ export default function Home() {
                 image: uploadedImageUrl,
                 email: email.trim(),
                 number: number.trim(),
+                isFound: false,
+                verificationCode: Math.floor(Math.random() * (999999 - 100000 + 1)) + 100000,
 
                 ...(itemStatus === 'lost' && {
                     course: course?.trim() || null,
@@ -127,25 +131,31 @@ export default function Home() {
             };
             console.log('Submitting item:', itemData);
 
-            // if (itemStatus === 'lost') {
-            //     const firebaseResponse = await firestore().collection("lostItems").add(itemData)
-            // }
-            // else {
-            //     const firebaseResponse = await firestore().collection("foundItems").add(itemData)
-            // }
+            if (itemStatus === 'lost') {
+                const collectionRef = collection(db, "lostItems")
+                const firebaseResponse = await addDoc(collectionRef, itemData)
 
-            setModalConfig({
-                type: 'success',
-                title: 'Success!',
-                message: `Item ${itemStatus === 'lost' ? 'lost' : 'found'} report submitted successfully!`
-            });
-            setModalVisible(true);
+                if(firebaseResponse && firebaseResponse.id){
+                    // Send Verification code
+
+                    setModalConfig({
+                        type: 'success',
+                        title: 'Success!',
+                        message: `Item ${itemStatus === 'lost' ? 'lost' : 'found'} report submitted successfully!`
+                    });
+                    setModalVisible(true);
+                }
+            }
+            else {
+                // const firebaseResponse = await firestore().collection("foundItems").add(itemData)
+            }   
         }
         catch (error) {
+            console.log(error)
             setModalConfig({
                 type: 'error',
                 title: 'Error',
-                message: "Failed to submit report. Please try again."
+                message: "Failed to submit report. Check internet connection"
             });
             setModalVisible(true);
         }

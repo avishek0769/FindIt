@@ -1,101 +1,153 @@
-import { StyleSheet, Text, View, ScrollView, Image, ActivityIndicator, Pressable, Linking } from 'react-native'
-import React, { useCallback, useState } from 'react'
+import { StyleSheet, Text, View, ScrollView, Image, ActivityIndicator, Pressable, Linking, TextInput, Modal } from 'react-native'
+import React, { useCallback, useEffect, useState } from 'react'
 import { useFocusEffect } from '@react-navigation/native';
 import '@react-native-firebase/app';
-import firestore from '@react-native-firebase/firestore';
+import firestore, { collection, doc, getDoc, getDocs, getFirestore, orderBy, query, updateDoc } from '@react-native-firebase/firestore';
+import { getApp } from '@react-native-firebase/app';
+import ModalPopup from '../components/ModalPopUp';
 
-const DUMMY_LOST_ITEMS = [
-    {
-        id: '1',
-        description: 'MacBook Pro 13" (2020) with stickers',
-        location: 'Library Reading Room, 2nd Floor',
-        dateLost: '2024-04-28',
-        timeLost: '14:30',
-        image: 'https://images.pexels.com/photos/303383/pexels-photo-303383.jpeg',
-        fullname: 'John Doe',
-        email: 'john.doe@example.com',
-        number: '9876543210',
-        course: 'B.Tech Computer Science',
-        year: '3',
-        isFound: false
-    },
-    {
-        id: '2',
-        description: 'Blue Nike backpack with calculus textbook',
-        location: 'Cafeteria',
-        dateLost: '2024-04-27',
-        timeLost: '12:15',
-        image: 'https://images.pexels.com/photos/2905238/pexels-photo-2905238.jpeg',
-        fullname: 'Sarah Wilson',
-        email: 'sarah.w@example.com',
-        number: '9876543211',
-        course: 'BSc Mathematics',
-        year: '2',
-        isFound: true
-    },
-    {
-        id: '3',
-        description: 'Black wallet with student ID',
-        location: 'Basketball Court',
-        dateLost: '2024-04-29',
-        timeLost: '16:45',
-        image: null,
-        fullname: 'Mike Johnson',
-        email: 'mike.j@example.com',
-        number: '9876543212',
-        course: 'BBA',
-        year: '1',
-        isFound: false
-    },
-    {
-        id: '4',
-        description: 'Samsung Galaxy S23 with red case',
-        location: 'Physics Lab',
-        dateLost: '2024-04-26',
-        timeLost: '11:20',
-        image: 'https://images.pexels.com/photos/699122/pexels-photo-699122.jpeg',
-        fullname: 'Emily Brown',
-        email: 'emily.b@example.com',
-        number: '9876543213',
-        course: 'BSc Physics',
-        year: '4',
-        isFound: false
-    },
-    {
-        id: '5',
-        description: 'Gold-plated prescription glasses',
-        location: 'Auditorium',
-        dateLost: '2024-04-25',
-        timeLost: '15:00',
-        image: 'https://images.pexels.com/photos/701877/pexels-photo-701877.jpeg',
-        fullname: 'David Clark',
-        email: 'david.c@example.com',
-        number: '9876543214',
-        course: 'BA Literature',
-        year: '2',
-        isFound: true
-    }
-];
+const db = getFirestore(getApp())
+
+const VerificationPopup = ({ visible, onClose, onVerify, code, setCode }) => {
+    const [verificationLoading, setVerificationLoading] = useState(false);
+
+    useEffect(() => {
+        setVerificationLoading(false)
+    }, [visible])
+
+    return (
+        <Modal
+            visible={visible}
+            transparent
+            animationType="fade"
+            onRequestClose={onClose}
+        >
+            <View style={styles.modalOverlay}>
+                <View style={styles.modalContent}>
+                    <Text style={styles.modalTitle}>Verify Item Found</Text>
+
+                    <Text style={styles.modalDescription}>
+                        Please enter the verification code provided by the item owner.
+                        This helps us ensure that items are returned to their rightful owners.
+                    </Text>
+
+                    <TextInput
+                        style={styles.verificationInput}
+                        placeholder="Enter verification code"
+                        value={code}
+                        keyboardType='number-pad'
+                        onChangeText={setCode}
+                        autoCapitalize="characters"
+                        maxLength={6}
+                    />
+
+                    <View style={styles.modalButtons}>
+                        <Pressable
+                            style={[styles.modalButton, styles.cancelButton]}
+                            onPress={onClose}
+                        >
+                            <Text style={styles.cancelButtonText}>Cancel</Text>
+                        </Pressable>
+
+                        <Pressable
+                            disabled={verificationLoading}
+                            style={[styles.modalButton, styles.verifyButton]}
+                            onPress={() => onVerify(code)}
+                        >
+                            {verificationLoading ? <ActivityIndicator color={"#fff"} /> : <Text style={styles.verifyButtonText}>Verify</Text>}
+                        </Pressable>
+                    </View>
+                </View>
+            </View>
+        </Modal>
+    );
+};
 
 export default function LostItemsScreen() {
     const [lostItems, setLostItems] = useState([])
     const [isFetching, setIsFetching] = useState(true)
     const [expandedItems, setExpandedItems] = useState({});
+    const [isVerificationVisible, setIsVerificationVisible] = useState(false);
+    const [verificationCode, setVerificationCode] = useState('');
+    const [selectedItemId, setSelectedItemId] = useState(null);
+    const [modalVisible, setModalVisible] = useState(false);
+    const [modalConfig, setModalConfig] = useState({
+        type: 'success',
+        title: '',
+        message: ''
+    });
+
+    const handleMarkFound = (itemId) => {
+        setSelectedItemId(itemId);
+        setIsVerificationVisible(true);
+    };
+
+    const handleVerification = async (code) => {
+        try {
+            const docRef = doc(db, "lostItems", selectedItemId)
+            const selectedDoc = await getDoc(docRef)
+            console.log("Selected Doc", selectedDoc)
+            console.log(selectedDoc._data.verificationCode, Number(code))
+
+            if (selectedDoc._data.verificationCode == Number(code)) {
+                await updateDoc(docRef, { isFound: true })
+
+                const updatedItems = lostItems.map(item =>
+                    item.id === selectedItemId ? { ...item, isFound: true } : item
+                )
+                setLostItems(updatedItems);
+                // Success popup
+                setModalConfig({
+                    type: "success",
+                    title: "Verified",
+                    message: "Item successfully verified as found",
+                })
+                setModalVisible(true)
+            }
+            else {
+                throw new Error("Verification code does not match")
+            }
+        }
+        catch (error) {
+            setIsVerificationVisible(false);
+            setTimeout(() => {
+                setModalConfig({
+                    type: "error",
+                    title: "Error",
+                    message: error.message
+                })
+                setModalVisible(true)
+            }, 100);
+        }
+        finally {
+            // Close the popup
+            setIsVerificationVisible(false);
+            setSelectedItemId(null);
+            setVerificationCode('');
+        }
+    };
 
     useFocusEffect(
         useCallback(() => {
             async function fetchLostItems() {
                 try {
-                    // const response = await firestore().collection('lostItems').get();
-                    // const items = response.docs.map(doc => ({
-                    //     id: doc.id,
-                    //     ...doc.data(),
-                    // }));
-                    // console.log(items);
-                    setLostItems(DUMMY_LOST_ITEMS);
+                    const collectionRef = collection(db, "lostItems")
+                    const q = query(collectionRef, orderBy("isFound"))
+                    const querySnapshot = await getDocs(q)
+
+                    const items = querySnapshot.docs.map(doc => ({
+                        id: doc.id,
+                        ...doc.data(),
+                    }));
+                    setLostItems(items);
                 }
                 catch (error) {
-                    console.log('Error fetching lost items: ', error);
+                    setModalConfig({
+                        type: "error",
+                        title: "Error",
+                        message: "Error occured, check internet connection"
+                    })
+                    setModalVisible(true)
                 }
                 finally {
                     setIsFetching(false);
@@ -143,12 +195,12 @@ export default function LostItemsScreen() {
                                 </View>
                             )}
                             <View style={[
-                                styles.statusBadge, 
-                                { 
+                                styles.statusBadge,
+                                {
                                     backgroundColor: item.isFound ? '#d8f3dc' : '#ffccd5',
                                     position: item.image ? 'absolute' : 'relative',
-                                    top: item.image ? 7 : 0,
-                                    right: item.image ? 7 : null,
+                                    top: item.image ? 1 : 0,
+                                    right: item.image ? 1 : null,
                                     left: item.image ? undefined : "68%",
                                 }
                             ]}>
@@ -221,10 +273,38 @@ export default function LostItemsScreen() {
                                     )}
                                 </View>
                             )}
+                            {!item.isFound && (
+                                <Pressable
+                                    style={styles.markFoundButton}
+                                    onPress={() => handleMarkFound(item.id)}
+                                >
+                                    <Text style={styles.markFoundButtonText}>Mark as Found</Text>
+                                    <Text style={styles.markFoundIcon}>✓</Text>
+                                </Pressable>
+                            )}
                         </View>
+
+                        {/* Add the VerificationPopup component at the bottom of your return statement */}
+                        <VerificationPopup
+                            visible={isVerificationVisible}
+                            onClose={() => setIsVerificationVisible(false)}
+                            onVerify={handleVerification}
+                            code={verificationCode}
+                            setCode={setVerificationCode}
+                        />
+
+
                     </View>
                 ))}
             </ScrollView>
+
+            <ModalPopup
+                visible={modalVisible}
+                type={modalConfig.type}
+                title={modalConfig.title}
+                message={modalConfig.message}
+                onClose={() => setModalVisible(false)}
+            />
         </View>
     );
 }
@@ -356,5 +436,89 @@ const styles = StyleSheet.create({
         color: '#999',
         fontSize: 16,
         fontStyle: 'italic',
+    },
+    markFoundButton: {
+        backgroundColor: '#4CAF50',
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        padding: 12,
+        borderRadius: 12,
+        marginTop: 16,
+        elevation: 2,
+    },
+    markFoundButtonText: {
+        color: '#fff',
+        fontSize: 16,
+        fontWeight: '600',
+        marginRight: 8,
+    },
+    markFoundIcon: {
+        color: '#fff',
+        fontSize: 18,
+    },
+    modalOverlay: {
+        flex: 1,
+        backgroundColor: 'rgba(0, 0, 0, 0.5)',
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    modalContent: {
+        backgroundColor: '#fff',
+        borderRadius: 20,
+        padding: 24,
+        width: '85%',
+        elevation: 5,
+    },
+    modalTitle: {
+        fontSize: 20,
+        fontWeight: '600',
+        color: '#2c3e50',
+        marginBottom: 16,
+        textAlign: 'center',
+    },
+    modalDescription: {
+        fontSize: 14,
+        color: '#666',
+        marginBottom: 20,
+        textAlign: 'center',
+        lineHeight: 20,
+    },
+    verificationInput: {
+        borderWidth: 1.5,
+        borderColor: '#e0e0e0',
+        borderRadius: 12,
+        padding: 12,
+        fontSize: 18,
+        textAlign: 'center',
+        letterSpacing: 2,
+        marginBottom: 20,
+    },
+    modalButtons: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        gap: 12,
+    },
+    modalButton: {
+        flex: 1,
+        padding: 12,
+        borderRadius: 12,
+        alignItems: 'center',
+    },
+    cancelButton: {
+        backgroundColor: '#f5f5f5',
+    },
+    verifyButton: {
+        backgroundColor: '#4CAF50',
+    },
+    cancelButtonText: {
+        color: '#666',
+        fontSize: 16,
+        fontWeight: '600',
+    },
+    verifyButtonText: {
+        color: '#fff',
+        fontSize: 16,
+        fontWeight: '600',
     },
 });

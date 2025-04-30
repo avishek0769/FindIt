@@ -2,10 +2,10 @@
 import React from 'react';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import Icon from 'react-native-vector-icons/MaterialIcons';
-import Home from './src/screens/Home';
-import LostItemsScreen from './src/screens/LostItemsScreen';
-import FoundItemsScreen from './src/screens/FoundItemsScreen';
-import About from './src/screens/About';
+import Home from './screens/Home';
+import LostItemsScreen from './screens/LostItemsScreen';
+import FoundItemsScreen from './screens/FoundItemsScreen';
+import About from './screens/About';
 
 const Tab = createBottomTabNavigator();
 
@@ -48,7 +48,7 @@ export default function Tabs() {
         >
             <Tab.Screen name="Home" component={Home} />
             <Tab.Screen name="Lost Items" component={LostItemsScreen} />
-            <Tab.Screen name="Found Items" component={FoundItemsScreen} />
+            {/* <Tab.Screen name="Found Items" component={FoundItemsScreen} /> */}
             <Tab.Screen name="About" component={About} />
         </Tab.Navigator>
     );
