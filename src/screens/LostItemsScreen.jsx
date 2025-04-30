@@ -402,8 +402,8 @@ const styles = StyleSheet.create({
     },
     description: {
         flex: 1,
-        fontSize: 18,
-        fontWeight: '600',
+        fontSize: 17,
+        fontWeight: '500',
         color: '#2c3e50',
         marginRight: 8,
     },

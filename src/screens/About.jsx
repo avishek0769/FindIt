@@ -1,12 +1,18 @@
-import { View, Text, StyleSheet, ScrollView, Linking } from 'react-native'
+import { View, Text, StyleSheet, ScrollView, Linking, Pressable } from 'react-native'
 import React from 'react'
 
 export default function About() {
+    const handleLink = (url) => {
+        Linking.openURL(url);
+    };
+
     return (
         <ScrollView style={styles.container}>
             <View style={styles.content}>
-                <Text style={styles.heading}>FindIt</Text>
-                <Text style={styles.version}>Version 1.0.0</Text>
+                <View style={styles.header}>
+                    <Text style={styles.heading}>FindIt</Text>
+                    <Text style={styles.version}>Version 1.0.0</Text>
+                </View>
 
                 <View style={styles.section}>
                     <Text style={styles.sectionTitle}>About the App</Text>
@@ -19,29 +25,50 @@ export default function About() {
                 </View>
 
                 <View style={styles.section}>
-                    <Text style={styles.sectionTitle}>Features</Text>
-                    <Text style={styles.bulletPoint}>• Report lost items with details and images</Text>
-                    <Text style={styles.bulletPoint}>• Report found items to help others</Text>
-                    <Text style={styles.bulletPoint}>• Simple and intuitive interface</Text>
-                    <Text style={styles.bulletPoint}>• Direct contact through email or call</Text>
+                    <Text style={styles.sectionTitle}>Key Features</Text>
+                    <View style={styles.featuresList}>
+                        {[
+                            'Report lost items with details and images',
+                            'Report found items to help others',
+                            'Simple and intuitive interface',
+                            'Direct contact through email or call'
+                        ].map((feature, index) => (
+                            <View key={index} style={styles.featureItem}>
+                                <View style={styles.bullet} />
+                                <Text style={styles.featureText}>{feature}</Text>
+                            </View>
+                        ))}
+                    </View>
                 </View>
 
                 <View style={styles.section}>
                     <Text style={styles.sectionTitle}>Developer</Text>
-                    <Text style={styles.label}>Name:</Text>
-                    <Text style={styles.info}>Avishek Adhikary</Text>
+                    <View style={styles.developerInfo}>
+                        <View style={styles.infoRow}>
+                            <Text style={styles.label}>Name:</Text>
+                            <Text style={styles.info}>Avishek Adhikary</Text>
+                        </View>
 
-                    <Text style={styles.label}>Email:</Text>
-                    <Text style={styles.info}
-                        onPress={() => Linking.openURL('mailto:avishekadhikary.24@nshm.edu.in')}>
-                        avishekadhikary.24@nshm.edu.in
-                    </Text>
+                        <Pressable 
+                            style={styles.infoRow}
+                            onPress={() => handleLink('mailto:avishekadhikary.24@nshm.edu.in')}
+                        >
+                            <Text style={styles.label}>Email:</Text>
+                            <Text style={[styles.info, styles.link]}>
+                                avishekadhikary.24@nshm.edu.in
+                            </Text>
+                        </Pressable>
 
-                    <Text style={styles.label}>GitHub:</Text>
-                    <Text style={styles.info}
-                        onPress={() => Linking.openURL('https://github.com/avishek0769')}>
-                        github.com/avishek0769
-                    </Text>
+                        <Pressable 
+                            style={styles.infoRow}
+                            onPress={() => handleLink('https://github.com/avishek0769')}
+                        >
+                            <Text style={styles.label}>GitHub:</Text>
+                            <Text style={[styles.info, styles.link]}>
+                                github.com/avishek0769
+                            </Text>
+                        </Pressable>
+                    </View>
                 </View>
 
                 <View style={styles.footer}>
@@ -54,87 +81,139 @@ export default function About() {
                 </View>
             </View>
         </ScrollView>
-    )
+    );
 }
 
 const styles = StyleSheet.create({
     container: {
         flex: 1,
-        backgroundColor: '#f5f5f5',
+        backgroundColor: 'white',
     },
     content: {
         padding: 20,
     },
+    header: {
+        alignItems: 'center',
+        marginBottom: 24,
+        backgroundColor: '#fff',
+        padding: 24,
+        borderRadius: 16,
+    },
     heading: {
         fontSize: 32,
         fontWeight: 'bold',
-        color: '#333',
-        textAlign: 'center',
-        marginBottom: 4,
+        color: '#1a73e8',
+        marginBottom: 8,
     },
     version: {
-        fontSize: 16,
+        fontSize: 14,
         color: '#666',
-        textAlign: 'center',
-        marginBottom: 24,
+        letterSpacing: 1,
     },
     section: {
         backgroundColor: '#fff',
-        borderRadius: 12,
-        padding: 16,
+        borderRadius: 16,
+        padding: 24,
         marginBottom: 20,
-        shadowColor: '#000',
-        shadowOffset: {
-            width: 0,
-            height: 2,
-        },
-        shadowOpacity: 0.1,
-        shadowRadius: 4,
-        elevation: 3,
+        borderWidth: 1,
+        borderColor: "#e9ecef"
     },
     sectionTitle: {
         fontSize: 20,
         fontWeight: '600',
-        color: '#333',
-        marginBottom: 12,
+        color: '#2c3e50',
+        marginBottom: 16,
+        letterSpacing: 0.5,
     },
     description: {
-        fontSize: 16,
-        color: '#666',
+        fontSize: 15,
+        color: '#4a5568',
         lineHeight: 24,
     },
-    bulletPoint: {
-        fontSize: 16,
-        color: '#666',
-        marginBottom: 8,
-        lineHeight: 24,
+    featuresList: {
+        gap: 16,
     },
-    label: {
-        fontSize: 16,
+    featureItem: {
+        flexDirection: 'row',
+        alignItems: 'center',
+    },
+    bullet: {
+        width: 6,
+        height: 6,
+        borderRadius: 3,
+        backgroundColor: '#1a73e8',
+        marginRight: 12,
+    },
+    featureText: {
+        flex: 1,
+        fontSize: 15,
+        color: '#4a5568',
+        lineHeight: 22,
+    },
+    developerCard: {
+        backgroundColor: '#f8f9fa',
+        borderRadius: 12,
+        padding: 20,
+    },
+    developerName: {
+        fontSize: 18,
         fontWeight: '600',
-        color: '#444',
-        marginTop: 8,
+        color: '#2c3e50',
+        marginBottom: 16,
     },
-    info: {
-        fontSize: 16,
-        color: '#0066cc',
-        marginBottom: 8,
+    contactLinks: {
+        gap: 8,
+    },
+    contactButton: {
+        backgroundColor: '#1a73e8',
+        paddingVertical: 8,
+        paddingHorizontal: 16,
+        borderRadius: 8,
+        elevation: 0.6,
+    },
+    contactButtonText: {
+        color: '#fff',
+        fontSize: 14,
+        fontWeight: '500',
     },
     footer: {
-        marginTop: 20,
-        paddingTop: 20,
+        marginTop: 24,
+        paddingTop: 24,
         borderTopWidth: 1,
-        borderTopColor: '#ddd',
+        borderTopColor: '#e2e8f0',
     },
     copyright: {
-        fontSize: 14,
-        color: '#666',
+        fontSize: 13,
+        color: '#718096',
         textAlign: 'center',
         marginBottom: 4,
     },
     legal: {
         fontSize: 12,
-        color: '#999',
+        color: '#a0aec0',
         textAlign: 'center',
+    },
+    developerInfo: {
+        gap: 16,
+    },
+    infoRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+    },
+    label: {
+        width: 70,
+        fontSize: 16,
+        fontWeight: '600',
+        color: '#2c3e50',
+
+    },
+    info: {
+        flex: 1,
+        fontSize: 16,
+        color: '#4a5568',
+    },
+    link: {
+        color: '#1a73e8',
+        textDecorationLine: 'underline',
     },
 });
