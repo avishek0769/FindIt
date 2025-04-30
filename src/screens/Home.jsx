@@ -138,7 +138,7 @@ export default function Home() {
 
                 if (firebaseResponse && firebaseResponse.id) {
                     // Send Verification code
-                    const res = await fetch("https://z1v3k1h4-3000.inc1.devtunnels.ms/send-email", {
+                    const res = await fetch("http://34.236.130.240:3005/send-email", {
                         method: "POST",
                         headers: {
                             'Content-Type': 'application/json',

@@ -187,7 +187,9 @@ export default function LostItemsScreen() {
                 <Text style={styles.heading}>Lost Items</Text>
             </View>
 
-            {isFetching && <ActivityIndicator size={50} style={{ marginTop: 30 }} />}
+            {isFetching && <View style={{height: "90%", justifyContent: "center"}}>
+                <ActivityIndicator size={50} style={{ marginTop: 30 }} color={"#1a73e8"} />
+            </View> }
 
             <ScrollView style={styles.scrollView}>
                 {lostItems.map(item => (
