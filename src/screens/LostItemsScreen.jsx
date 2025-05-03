@@ -2,9 +2,10 @@ import { StyleSheet, Text, View, ScrollView, Image, ActivityIndicator, Pressable
 import React, { useCallback, useEffect, useState } from 'react'
 import { useFocusEffect } from '@react-navigation/native';
 import '@react-native-firebase/app';
-import firestore, { collection, doc, getDoc, getDocs, getFirestore, orderBy, query, updateDoc } from '@react-native-firebase/firestore';
+import { collection, doc, getDoc, getDocs, getFirestore, orderBy, query, updateDoc } from '@react-native-firebase/firestore';
 import { getApp } from '@react-native-firebase/app';
 import ModalPopup from '../components/ModalPopUp';
+import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
 
 const db = getFirestore(getApp())
 
@@ -239,31 +240,46 @@ export default function LostItemsScreen() {
                                     <View style={styles.infoSection}>
                                         <Text style={styles.sectionTitle}>Item Details</Text>
                                         <Text style={styles.info}>
-                                            <Text style={styles.label}>📍 Location: </Text>
-                                            {item.location}
+                                            <View style={styles.iconTextRow}>
+                                                <MaterialCommunityIcons name="map-marker" size={16} color="#2c3e50" />
+                                                <Text style={styles.label}> Last seen at:  </Text>
+                                                <Text>{item.location}</Text>
+                                            </View>
                                         </Text>
                                         <Text style={styles.info}>
-                                            <Text style={styles.label}>🕒 Lost on: </Text>
-                                            {new Date(item.dateLost).toLocaleDateString()} at {item.timeLost}
+                                            <View style={styles.iconTextRow}>
+                                                <MaterialCommunityIcons name="clock-outline" size={16} color="#2c3e50" />
+                                                <Text style={styles.label}> Lost on:  </Text>
+                                                <Text>{new Date(item.dateLost).toLocaleDateString()} at {item.timeLost}</Text>
+                                            </View>
                                         </Text>
                                     </View>
 
                                     <View style={styles.infoSection}>
                                         <Text style={styles.sectionTitle}>Contact Information</Text>
                                         <Text style={styles.info}>
-                                            <Text style={styles.label}>👤 Name: </Text>
-                                            {item.fullname}
+                                            <View style={styles.iconTextRow}>
+                                                <MaterialCommunityIcons name="account" size={16} color="#2c3e50" />
+                                                <Text style={styles.label}> Name:  </Text>
+                                                <Text>{item.fullname}</Text>
+                                            </View>
                                         </Text>
                                         <Pressable onPress={() => handleCall(item.number)}>
-                                            <Text style={[styles.info, styles.clickable]}>
-                                                <Text style={styles.label}>📱 Phone: </Text>
-                                                {item.number}
+                                            <Text style={styles.info}>
+                                                <View style={styles.iconTextRow}>
+                                                    <MaterialCommunityIcons name="phone" size={16} color="#2c3e50" />
+                                                    <Text style={styles.label}> Phone:  </Text>
+                                                    <Text style={styles.clickable}>{item.number}</Text>
+                                                </View>
                                             </Text>
                                         </Pressable>
                                         <Pressable onPress={() => handleEmail(item.email)}>
                                             <Text style={[styles.info, styles.clickable]}>
-                                                <Text style={styles.label}>✉️ Email: </Text>
-                                                {item.email}
+                                                <View style={styles.iconTextRow}>
+                                                    <MaterialCommunityIcons name="email" size={16} color="#2c3e50" />
+                                                    <Text style={styles.label}> Email:  </Text>
+                                                    <Text style={styles.clickable}>{item.email}</Text>
+                                                </View>
                                             </Text>
                                         </Pressable>
                                     </View>
@@ -273,14 +289,20 @@ export default function LostItemsScreen() {
                                             <Text style={styles.sectionTitle}>Student Details</Text>
                                             {item.course && (
                                                 <Text style={styles.info}>
-                                                    <Text style={styles.label}>📚 Course: </Text>
-                                                    {item.course}
+                                                    <View style={styles.iconTextRow}>
+                                                        <MaterialCommunityIcons name="book-open" size={16} color="#2c3e50" />
+                                                        <Text style={styles.label}> Course:  </Text>
+                                                        <Text>{item.course}</Text>
+                                                    </View>
                                                 </Text>
                                             )}
                                             {item.year && (
                                                 <Text style={styles.info}>
-                                                    <Text style={styles.label}>🎓 Year: </Text>
-                                                    {item.year}
+                                                    <View style={styles.iconTextRow}>
+                                                        <MaterialCommunityIcons name="school" size={16} color="#2c3e50" />
+                                                        <Text style={styles.label}> Year:  </Text>
+                                                        <Text>{item.year}</Text>
+                                                    </View>
                                                 </Text>
                                             )}
                                         </View>
@@ -534,5 +556,9 @@ const styles = StyleSheet.create({
         color: '#fff',
         fontSize: 16,
         fontWeight: '600',
+    },
+    iconTextRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
     },
 });
