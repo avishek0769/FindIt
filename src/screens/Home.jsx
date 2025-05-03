@@ -1,13 +1,15 @@
-import { View, Text, TextInput, TouchableOpacity, Image, StyleSheet, Platform, ScrollView, Pressable, Alert, ActivityIndicator } from 'react-native';
+import { View, Text, TextInput, Image, StyleSheet, ScrollView, Pressable, ActivityIndicator } from 'react-native';
 import React, { useState } from 'react';
 import { pick, types } from '@react-native-documents/picker';
 import DatePicker from 'react-native-date-picker';
 import '@react-native-firebase/app';
-import firestore, { addDoc, collection, getFirestore } from '@react-native-firebase/firestore';
+import { addDoc, collection, getFirestore } from '@react-native-firebase/firestore';
 import { CLOUDINARY_CLOUD_NAME, CLOUDINARY_UPLOAD_PRESET, CLOUDINARY_URL } from "@env"
 import { Picker } from '@react-native-picker/picker';
 import ModalPopup from '../components/ModalPopUp';
 import { getApp } from '@react-native-firebase/app';
+import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
+
 
 const db = getFirestore(getApp())
 
@@ -275,7 +277,10 @@ export default function Home() {
                 {/* The image picker section */}
                 <View style={styles.formSection}>
                     <Text style={styles.label}>
-                        <Text style={styles.labelIcon}>📸</Text> Item Image
+                        <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                            <MaterialCommunityIcons name="camera" size={20} color="#2c3e50" />
+                            <Text> Item Image</Text>
+                        </View>
                     </Text>
                     <Pressable
                         android_ripple={{ color: "#ddd" }}
@@ -298,7 +303,7 @@ export default function Home() {
                             </View>
                         ) : (
                             <View style={styles.uploadPlaceholder}>
-                                <Text style={styles.uploadIcon}>📤</Text>
+                                <MaterialCommunityIcons name="upload" size={32} color="#666" />
                                 <Text style={styles.imagePickerText}>Tap to upload an image (optional)</Text>
                                 {itemStatus == "lost" && <Text style={styles.imagePickerSubText}>Try to give a landscape image</Text>}
                             </View>
@@ -308,7 +313,10 @@ export default function Home() {
 
                 <View style={styles.formSection}>
                     <Text style={styles.label}>
-                        <Text style={styles.labelIcon}>📝</Text> Description
+                        <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                            <MaterialCommunityIcons name="pencil" size={20} color="#2c3e50" />
+                            <Text> Description</Text>
+                        </View>
                     </Text>
                     <TextInput
                         placeholderTextColor={'#999'}
@@ -325,7 +333,10 @@ export default function Home() {
 
                 <View style={styles.formSection}>
                     <Text style={styles.label}>
-                        <Text style={styles.labelIcon}>📍</Text> Location
+                        <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                            <MaterialCommunityIcons name="map-marker" size={20} color="#2c3e50" />
+                            <Text> Location</Text>
+                        </View>
                     </Text>
                     <TextInput
                         placeholderTextColor={'#999'}
@@ -338,7 +349,10 @@ export default function Home() {
 
                 <View style={styles.formSection}>
                     <Text style={styles.label}>
-                        <Text style={styles.labelIcon}>👤</Text> Full name
+                        <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                            <MaterialCommunityIcons name="account" size={20} color="#2c3e50" />
+                            <Text> Full name</Text>
+                        </View>
                     </Text>
                     <TextInput
                         placeholderTextColor={'#999'}
@@ -352,7 +366,10 @@ export default function Home() {
 
                 <View style={styles.formSection}>
                     <Text style={styles.label}>
-                        <Text style={styles.labelIcon}>✉️</Text> Email address
+                        <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                            <MaterialCommunityIcons name="email" size={20} color="#2c3e50" />
+                            <Text> Email address</Text>
+                        </View>
                     </Text>
                     <TextInput
                         placeholderTextColor={'#999'}
@@ -369,7 +386,10 @@ export default function Home() {
 
                 <View style={styles.formSection}>
                     <Text style={styles.label}>
-                        <Text style={styles.labelIcon}>📱</Text> Phone number
+                        <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                            <MaterialCommunityIcons name="phone" size={20} color="#2c3e50" />
+                            <Text> Phone number</Text>
+                        </View>
                     </Text>
                     <TextInput
                         placeholderTextColor={'#999'}
@@ -385,7 +405,10 @@ export default function Home() {
                     <>
                         <View style={styles.formSection}>
                             <Text style={styles.label}>
-                                <Text style={styles.labelIcon}>📚</Text> Course (optional)
+                                <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                                    <MaterialCommunityIcons name="book-open" size={20} color="#2c3e50" />
+                                    <Text> Course (optional)</Text>
+                                </View>
                             </Text>
                             <TextInput
                                 placeholderTextColor={'#999'}
@@ -399,7 +422,10 @@ export default function Home() {
 
                         <View style={styles.formSection}>
                             <Text style={styles.label}>
-                                <Text style={styles.labelIcon}>🎓</Text> Year of study (optional)
+                                <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                                    <MaterialCommunityIcons name="school" size={20} color="#2c3e50" />
+                                    <Text> Year of study (optional)</Text>
+                                </View>
                             </Text>
                             <View style={styles.pickerContainer}>
                                 <Picker
@@ -418,14 +444,17 @@ export default function Home() {
                         </View>
                         <View style={styles.formSection}>
                             <Text style={styles.label}>
-                                <Text style={styles.labelIcon}>🕒</Text> When was it lost?
+                                <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                                    <MaterialCommunityIcons name="clock" size={20} color="#2c3e50" />
+                                    <Text> When was it lost?</Text>
+                                </View>
                             </Text>
                             <Pressable
                                 style={styles.dateTimeButton}
                                 onPress={() => setOpenDate(true)}
                             >
                                 <Text style={styles.dateTimeText}>{date.toLocaleDateString()}</Text>
-                                <Text style={styles.dateTimeIcon}>📅</Text>
+                                <MaterialCommunityIcons name="calendar" size={20} color="#666" />
                             </Pressable>
 
                             <Pressable
@@ -435,7 +464,7 @@ export default function Home() {
                                 <Text style={styles.dateTimeText}>
                                     {time.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                                 </Text>
-                                <Text style={styles.dateTimeIcon}>⏰</Text>
+                                <MaterialCommunityIcons name="clock-outline" size={20} color="#666" />
                             </Pressable>
 
                             <DatePicker
@@ -475,7 +504,7 @@ export default function Home() {
                         ) : (
                             <>
                                 <Text style={styles.submitButtonText}>Report Item</Text>
-                                <Text style={styles.submitButtonIcon}>📢</Text>
+                                <MaterialCommunityIcons name="send" size={20} color="#fff" />
                             </>
                         )}
                     </View>
@@ -598,11 +627,8 @@ const styles = StyleSheet.create({
         color: '#2c3e50',
         marginBottom: 10,
         flexDirection: 'row',
-        alignItems: 'center',
-    },
-    labelIcon: {
-        marginRight: 8,
-        fontSize: 18,
+        alignItems: 'center',  // This aligns items vertically in the center
+        gap: 8,
     },
     input: {
         borderWidth: 1.5,
