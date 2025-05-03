@@ -627,7 +627,7 @@ const styles = StyleSheet.create({
         color: '#2c3e50',
         marginBottom: 10,
         flexDirection: 'row',
-        alignItems: 'center',  // This aligns items vertically in the center
+        alignItems: 'center',
         gap: 8,
     },
     input: {

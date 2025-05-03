@@ -188,7 +188,7 @@ export default function LostItemsScreen() {
                 {item.image && (
                     <View style={styles.imageContainer}>
                         <Image
-                            source={{ uri: item.image }}
+                            source={{ uri: item.image.replace('/upload/', '/upload/q_auto,f_auto,w_800/') }}
                             style={styles.image}
                             resizeMode="contain"
                         />
