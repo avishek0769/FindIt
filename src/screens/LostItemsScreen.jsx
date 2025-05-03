@@ -1,4 +1,4 @@
-import { StyleSheet, Text, View, ScrollView, Image, ActivityIndicator, Pressable, Linking, TextInput, Modal } from 'react-native'
+import { StyleSheet, Text, View, Image, ActivityIndicator, Pressable, Linking, TextInput, Modal, FlatList } from 'react-native'
 import React, { useCallback, useEffect, useState } from 'react'
 import { useFocusEffect } from '@react-navigation/native';
 import '@react-native-firebase/app';
@@ -182,157 +182,167 @@ export default function LostItemsScreen() {
         Linking.openURL(`mailto:${email}`);
     };
 
+    const renderItem = ({ item }) => (
+        <View key={item.id} style={styles.card}>
+            <View style={styles.cardHeader}>
+                {item.image && (
+                    <View style={styles.imageContainer}>
+                        <Image
+                            source={{ uri: item.image }}
+                            style={styles.image}
+                            resizeMode="contain"
+                        />
+                    </View>
+                )}
+                <View style={[
+                    styles.statusBadge,
+                    {
+                        backgroundColor: item.isFound ? '#d8f3dc' : '#ffccd5',
+                        position: item.image ? 'absolute' : 'relative',
+                        top: item.image ? 1 : 0,
+                        right: item.image ? 1 : null,
+                        left: item.image ? undefined : "68%",
+                    }
+                ]}>
+                    <Text style={[
+                        styles.statusText,
+                        item.isFound ? styles.statusFound : styles.statusLost
+                    ]}>
+                        {item.isFound ? 'Found' : 'Not Found'}
+                    </Text>
+                </View>
+            </View>
+
+            <View style={styles.details}>
+                <Pressable
+                    onPress={() => toggleExpand(item.id)}
+                    style={styles.headerRow}
+                >
+                    <Text style={styles.description}>{item.description}</Text>
+                    <Text style={styles.expandIcon}>
+                        {expandedItems[item.id] ? '▼' : '▶'}
+                    </Text>
+                </Pressable>
+
+                {expandedItems[item.id] && (
+                    <View style={styles.infoGrid}>
+                        <View style={styles.infoSection}>
+                            <Text style={styles.sectionTitle}>Item Details</Text>
+                            <Text style={styles.info}>
+                                <View style={styles.iconTextRow}>
+                                    <MaterialCommunityIcons name="map-marker" size={16} color="#2c3e50" />
+                                    <Text style={styles.label}> Last seen at:  </Text>
+                                    <Text>{item.location}</Text>
+                                </View>
+                            </Text>
+                            <Text style={styles.info}>
+                                <View style={styles.iconTextRow}>
+                                    <MaterialCommunityIcons name="clock-outline" size={16} color="#2c3e50" />
+                                    <Text style={styles.label}> Lost on:  </Text>
+                                    <Text>{new Date(item.dateLost).toLocaleDateString()} at {item.timeLost}</Text>
+                                </View>
+                            </Text>
+                        </View>
+
+                        <View style={styles.infoSection}>
+                            <Text style={styles.sectionTitle}>Contact Information</Text>
+                            <Text style={styles.info}>
+                                <View style={styles.iconTextRow}>
+                                    <MaterialCommunityIcons name="account" size={16} color="#2c3e50" />
+                                    <Text style={styles.label}> Name:  </Text>
+                                    <Text>{item.fullname}</Text>
+                                </View>
+                            </Text>
+                            <Pressable onPress={() => handleCall(item.number)}>
+                                <Text style={styles.info}>
+                                    <View style={styles.iconTextRow}>
+                                        <MaterialCommunityIcons name="phone" size={16} color="#2c3e50" />
+                                        <Text style={styles.label}> Phone:  </Text>
+                                        <Text style={styles.clickable}>{item.number}</Text>
+                                    </View>
+                                </Text>
+                            </Pressable>
+                            <Pressable onPress={() => handleEmail(item.email)}>
+                                <Text style={[styles.info, styles.clickable]}>
+                                    <View style={styles.iconTextRow}>
+                                        <MaterialCommunityIcons name="email" size={16} color="#2c3e50" />
+                                        <Text style={styles.label}> Email:  </Text>
+                                        <Text style={styles.clickable}>{item.email}</Text>
+                                    </View>
+                                </Text>
+                            </Pressable>
+                        </View>
+
+                        {(item.course || item.year) && (
+                            <View style={styles.infoSection}>
+                                <Text style={styles.sectionTitle}>Student Details</Text>
+                                {item.course && (
+                                    <Text style={styles.info}>
+                                        <View style={styles.iconTextRow}>
+                                            <MaterialCommunityIcons name="book-open" size={16} color="#2c3e50" />
+                                            <Text style={styles.label}> Course:  </Text>
+                                            <Text>{item.course}</Text>
+                                        </View>
+                                    </Text>
+                                )}
+                                {item.year && (
+                                    <Text style={styles.info}>
+                                        <View style={styles.iconTextRow}>
+                                            <MaterialCommunityIcons name="school" size={16} color="#2c3e50" />
+                                            <Text style={styles.label}> Year:  </Text>
+                                            <Text>{item.year}</Text>
+                                        </View>
+                                    </Text>
+                                )}
+                            </View>
+                        )}
+                    </View>
+                )}
+                {!item.isFound && (
+                    <Pressable
+                        style={styles.markFoundButton}
+                        onPress={() => handleMarkFound(item.id)}
+                    >
+                        <Text style={styles.markFoundButtonText}>Mark as Found</Text>
+                        <Text style={styles.markFoundIcon}>✓</Text>
+                    </Pressable>
+                )}
+            </View>
+        </View>
+    );
+
     return (
         <View style={styles.container}>
             <View style={styles.headerContainer}>
                 <Text style={styles.heading}>Lost Items</Text>
             </View>
 
-            {isFetching && <View style={{ height: "90%", justifyContent: "center" }}>
-                <ActivityIndicator size={50} style={{ marginTop: 30 }} color={"#1a73e8"} />
-            </View>}
-
-            <ScrollView style={styles.scrollView}>
-                {lostItems.map(item => (
-                    <View key={item.id} style={styles.card}>
-                        <View style={styles.cardHeader}>
-                            {item.image && (
-                                <View style={styles.imageContainer}>
-                                    <Image
-                                        source={{ uri: item.image }}
-                                        style={styles.image}
-                                        resizeMode="contain"
-                                    />
-                                </View>
-                            )}
-                            <View style={[
-                                styles.statusBadge,
-                                {
-                                    backgroundColor: item.isFound ? '#d8f3dc' : '#ffccd5',
-                                    position: item.image ? 'absolute' : 'relative',
-                                    top: item.image ? 1 : 0,
-                                    right: item.image ? 1 : null,
-                                    left: item.image ? undefined : "68%",
-                                }
-                            ]}>
-                                <Text style={[
-                                    styles.statusText,
-                                    item.isFound ? styles.statusFound : styles.statusLost
-                                ]}>
-                                    {item.isFound ? 'Found' : 'Not Found'}
-                                </Text>
-                            </View>
+            {isFetching ? (
+                <View style={{ flex: 1, justifyContent: "center" }}>
+                    <ActivityIndicator size={50} color={"#1a73e8"} />
+                </View>
+            ) : (
+                <FlatList
+                    data={lostItems}
+                    renderItem={renderItem}
+                    keyExtractor={item => item.id}
+                    contentContainerStyle={styles.listContainer}
+                    showsVerticalScrollIndicator={false}
+                    ListEmptyComponent={() => (
+                        <View style={styles.emptyContainer}>
+                            <Text style={styles.emptyText}>No lost items found</Text>
                         </View>
+                    )}
+                />
+            )}
 
-                        <View style={styles.details}>
-                            <Pressable
-                                onPress={() => toggleExpand(item.id)}
-                                style={styles.headerRow}
-                            >
-                                <Text style={styles.description}>{item.description}</Text>
-                                <Text style={styles.expandIcon}>
-                                    {expandedItems[item.id] ? '▼' : '▶'}
-                                </Text>
-                            </Pressable>
-
-                            {expandedItems[item.id] && (
-                                <View style={styles.infoGrid}>
-                                    <View style={styles.infoSection}>
-                                        <Text style={styles.sectionTitle}>Item Details</Text>
-                                        <Text style={styles.info}>
-                                            <View style={styles.iconTextRow}>
-                                                <MaterialCommunityIcons name="map-marker" size={16} color="#2c3e50" />
-                                                <Text style={styles.label}> Last seen at:  </Text>
-                                                <Text>{item.location}</Text>
-                                            </View>
-                                        </Text>
-                                        <Text style={styles.info}>
-                                            <View style={styles.iconTextRow}>
-                                                <MaterialCommunityIcons name="clock-outline" size={16} color="#2c3e50" />
-                                                <Text style={styles.label}> Lost on:  </Text>
-                                                <Text>{new Date(item.dateLost).toLocaleDateString()} at {item.timeLost}</Text>
-                                            </View>
-                                        </Text>
-                                    </View>
-
-                                    <View style={styles.infoSection}>
-                                        <Text style={styles.sectionTitle}>Contact Information</Text>
-                                        <Text style={styles.info}>
-                                            <View style={styles.iconTextRow}>
-                                                <MaterialCommunityIcons name="account" size={16} color="#2c3e50" />
-                                                <Text style={styles.label}> Name:  </Text>
-                                                <Text>{item.fullname}</Text>
-                                            </View>
-                                        </Text>
-                                        <Pressable onPress={() => handleCall(item.number)}>
-                                            <Text style={styles.info}>
-                                                <View style={styles.iconTextRow}>
-                                                    <MaterialCommunityIcons name="phone" size={16} color="#2c3e50" />
-                                                    <Text style={styles.label}> Phone:  </Text>
-                                                    <Text style={styles.clickable}>{item.number}</Text>
-                                                </View>
-                                            </Text>
-                                        </Pressable>
-                                        <Pressable onPress={() => handleEmail(item.email)}>
-                                            <Text style={[styles.info, styles.clickable]}>
-                                                <View style={styles.iconTextRow}>
-                                                    <MaterialCommunityIcons name="email" size={16} color="#2c3e50" />
-                                                    <Text style={styles.label}> Email:  </Text>
-                                                    <Text style={styles.clickable}>{item.email}</Text>
-                                                </View>
-                                            </Text>
-                                        </Pressable>
-                                    </View>
-
-                                    {(item.course || item.year) && (
-                                        <View style={styles.infoSection}>
-                                            <Text style={styles.sectionTitle}>Student Details</Text>
-                                            {item.course && (
-                                                <Text style={styles.info}>
-                                                    <View style={styles.iconTextRow}>
-                                                        <MaterialCommunityIcons name="book-open" size={16} color="#2c3e50" />
-                                                        <Text style={styles.label}> Course:  </Text>
-                                                        <Text>{item.course}</Text>
-                                                    </View>
-                                                </Text>
-                                            )}
-                                            {item.year && (
-                                                <Text style={styles.info}>
-                                                    <View style={styles.iconTextRow}>
-                                                        <MaterialCommunityIcons name="school" size={16} color="#2c3e50" />
-                                                        <Text style={styles.label}> Year:  </Text>
-                                                        <Text>{item.year}</Text>
-                                                    </View>
-                                                </Text>
-                                            )}
-                                        </View>
-                                    )}
-                                </View>
-                            )}
-                            {!item.isFound && (
-                                <Pressable
-                                    style={styles.markFoundButton}
-                                    onPress={() => handleMarkFound(item.id)}
-                                >
-                                    <Text style={styles.markFoundButtonText}>Mark as Found</Text>
-                                    <Text style={styles.markFoundIcon}>✓</Text>
-                                </Pressable>
-                            )}
-                        </View>
-
-                        {/* Add the VerificationPopup component at the bottom of your return statement */}
-                        <VerificationPopup
-                            visible={isVerificationVisible}
-                            onClose={() => setIsVerificationVisible(false)}
-                            onVerify={handleVerification}
-                            code={verificationCode}
-                            setCode={setVerificationCode}
-                        />
-
-
-                    </View>
-                ))}
-            </ScrollView>
+            <VerificationPopup
+                visible={isVerificationVisible}
+                onClose={() => setIsVerificationVisible(false)}
+                onVerify={handleVerification}
+                code={verificationCode}
+                setCode={setVerificationCode}
+            />
 
             <ModalPopup
                 visible={modalVisible}
@@ -356,10 +366,6 @@ const styles = StyleSheet.create({
         paddingBottom: 8,
         borderBottomWidth: 1,
         borderBottomColor: '#ddd',
-    },
-    scrollView: {
-        flex: 1,
-        padding: 16,
     },
     heading: {
         fontSize: 24,
@@ -560,5 +566,20 @@ const styles = StyleSheet.create({
     iconTextRow: {
         flexDirection: 'row',
         alignItems: 'center',
+        gap: 3
+    },
+    listContainer: {
+        padding: 16,
+    },
+    emptyContainer: {
+        flex: 1,
+        alignItems: 'center',
+        justifyContent: 'center',
+        paddingVertical: 32,
+    },
+    emptyText: {
+        fontSize: 16,
+        color: '#666',
+        textAlign: 'center',
     },
 });
