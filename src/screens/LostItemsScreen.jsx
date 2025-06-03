@@ -1,4 +1,4 @@
-import { StyleSheet, Text, View, Image, ActivityIndicator, Pressable, Linking, TextInput, Modal, FlatList } from 'react-native'
+import { StyleSheet, Text, View, Image, ActivityIndicator, Pressable, Linking, TextInput, Modal, FlatList, ScrollView } from 'react-native'
 import React, { useCallback, useEffect, useRef, useState } from 'react'
 import { useFocusEffect } from '@react-navigation/native';
 import '@react-native-firebase/app';
@@ -81,7 +81,11 @@ export default function LostItemsScreen() {
     });
     const [searchQuery, setSearchQuery] = useState('');
     const [isSearching, setIsSearching] = useState(false);
-    const debounceTimeOut = useRef(null)
+    const [statusFilter, setStatusFilter] = useState('all');
+    const [timeFilter, setTimeFilter] = useState('all');
+    const [sortBy, setSortBy] = useState('latest');
+    const [activeDropdown, setActiveDropdown] = useState(null);
+    const debounceTimeout = useRef(null)
 
     const handleMarkFound = (itemId) => {
         setSelectedItemId(itemId);
@@ -143,20 +147,208 @@ export default function LostItemsScreen() {
 
 
     const handleSearch = useCallback(async (text) => {
-        console.log("Debounced call")
         setIsSearching(true);
 
         try {
             const collectionRef = collection(db, "lostItems");
             const searchText = text.toLowerCase();
 
-            // Create a query that searches in description and location
-            const q = query(
+            // Create base query with search
+            let q = query(
                 collectionRef,
-                where("keywords", "array-contains", searchText.toLowerCase()),
-                orderBy('description')
+                where("keywords", "array-contains", searchText.toLowerCase())
             );
 
+            // Add status filter to search query
+            if (statusFilter === 'found') {
+                q = query(
+                    collectionRef,
+                    where("keywords", "array-contains", searchText.toLowerCase()),
+                    where("isFound", "==", true)
+                );
+            } else if (statusFilter === 'notFound') {
+                q = query(
+                    collectionRef,
+                    where("keywords", "array-contains", searchText.toLowerCase()),
+                    where("isFound", "==", false)
+                );
+            }
+
+            const querySnapshot = await getDocs(q);
+            let items = querySnapshot.docs.map(doc => {
+                const data = doc.data();
+                const date = data.dateLost?.toDate();
+
+                return {
+                    id: doc.id,
+                    ...data,
+                    dateLost: date ? `${String(date.getDate()).padStart(2, '0')}/${String(date.getMonth() + 1).padStart(2, '0')}/${date.getFullYear()}` : null,
+                    dateObject: date,
+                };
+            });
+
+            // Apply time filter to search results
+            if (timeFilter !== 'all') {
+                const now = new Date();
+                let cutoffDate = new Date();
+
+                if (timeFilter === 'week') {
+                    cutoffDate.setDate(now.getDate() - 7);
+                } else if (timeFilter === 'month') {
+                    cutoffDate.setMonth(now.getMonth() - 1);
+                }
+
+                items = items.filter(item => {
+                    if (!item.dateObject) return false;
+                    return item.dateObject >= cutoffDate;
+                });
+            }
+
+            // Apply sorting to search results
+            items.sort((a, b) => {
+                if (!a.dateObject || !b.dateObject) return 0;
+
+                if (sortBy === 'latest') {
+                    return b.dateObject - a.dateObject;
+                } else {
+                    return a.dateObject - b.dateObject;
+                }
+            });
+
+            // Remove the temporary dateObject
+            items = items.map(item => {
+                const { dateObject, ...itemWithoutDateObject } = item;
+                return itemWithoutDateObject;
+            });
+
+            setLostItems(items);
+        } catch (error) {
+            console.log(error);
+            setModalConfig({
+                type: "error",
+                title: "Search Error",
+                message: "Unable to perform search. Please try again."
+            });
+            setModalVisible(true);
+        } finally {
+            setIsSearching(false);
+        }
+    }, [statusFilter, timeFilter, sortBy]);
+
+    useEffect(() => {
+        clearTimeout(debounceTimeout.current)
+        if (searchQuery.trim() === '') {
+            fetchLostItems();
+        } else {
+            debounceTimeout.current = setTimeout(() => {
+                handleSearch(searchQuery);
+            }, 400);
+        }
+        return () => clearTimeout(debounceTimeout.current);
+    }, [searchQuery])
+
+    // Add this function to apply filters
+    const applyFilters = async () => {
+        setIsFetching(true);
+        try {
+            const collectionRef = collection(db, "lostItems");
+            let q;
+
+            // Base query with status filter
+            if (statusFilter === 'found') {
+                q = query(collectionRef, where("isFound", "==", true));
+            } else if (statusFilter === 'notFound') {
+                q = query(collectionRef, where("isFound", "==", false));
+            } else {
+                // For 'all' status, get all documents and order by isFound (Not Found first)
+                q = query(collectionRef, orderBy("isFound", "asc"));
+            }
+
+            const querySnapshot = await getDocs(q);
+            let items = querySnapshot.docs.map(doc => {
+                const data = doc.data();
+                const date = data.dateLost?.toDate();
+
+                return {
+                    id: doc.id,
+                    ...data,
+                    dateLost: date ? `${String(date.getDate()).padStart(2, '0')}/${String(date.getMonth() + 1).padStart(2, '0')}/${date.getFullYear()}` : null,
+                    dateObject: date, // Keep original date for filtering
+                };
+            });
+
+            // Apply time filter
+            if (timeFilter !== 'all') {
+                const now = new Date();
+                let cutoffDate = new Date();
+
+                if (timeFilter === 'week') {
+                    cutoffDate.setDate(now.getDate() - 7);
+                } else if (timeFilter === 'month') {
+                    cutoffDate.setMonth(now.getMonth() - 1);
+                }
+
+                items = items.filter(item => {
+                    if (!item.dateObject) return false;
+                    return item.dateObject >= cutoffDate;
+                });
+            }
+
+            // Apply sorting (only if status is 'all', otherwise maintain the natural order)
+            if (statusFilter === 'all') {
+                items.sort((a, b) => {
+                    // First sort by isFound status (Not Found first)
+                    if (a.isFound !== b.isFound) {
+                        return a.isFound ? 1 : -1; // false (Not Found) comes first
+                    }
+
+                    // Then sort by date within each status group
+                    if (!a.dateObject || !b.dateObject) return 0;
+
+                    if (sortBy === 'latest') {
+                        return b.dateObject - a.dateObject;
+                    } else {
+                        return a.dateObject - b.dateObject;
+                    }
+                });
+            } else {
+                // For specific status filters, just sort by date
+                items.sort((a, b) => {
+                    if (!a.dateObject || !b.dateObject) return 0;
+
+                    if (sortBy === 'latest') {
+                        return b.dateObject - a.dateObject;
+                    } else {
+                        return a.dateObject - b.dateObject;
+                    }
+                });
+            }
+
+            // Remove the temporary dateObject before setting state
+            items = items.map(item => {
+                const { dateObject, ...itemWithoutDateObject } = item;
+                return itemWithoutDateObject;
+            });
+
+            setLostItems(items);
+        } catch (error) {
+            setModalConfig({
+                type: "error",
+                title: "Filter Error",
+                message: "Unable to apply filters. Please try again."
+            });
+            setModalVisible(true);
+        } finally {
+            setIsFetching(false);
+        }
+    };
+
+    // Update the fetchLostItems function to use the same logic
+    async function fetchLostItems() {
+        setIsFetching(true);
+        try {
+            const collectionRef = collection(db, "lostItems");
+            const q = query(collectionRef, orderBy("isFound", "asc")); // Changed to "asc" so false (Not Found) comes first
             const querySnapshot = await getDocs(q);
 
             const items = querySnapshot.docs.map(doc => {
@@ -171,61 +363,14 @@ export default function LostItemsScreen() {
             });
 
             setLostItems(items);
-        }
-        catch (error) {
-            console.log(error)
-            setModalConfig({
-                type: "error",
-                title: "Search Error",
-                message: "Unable to perform search. Please try again."
-            });
-            setModalVisible(true);
-        }
-        finally {
-            setIsSearching(false);
-        }
-    }, [setSearchQuery, setLostItems, setIsSearching]);
-
-    useEffect(() => {
-        clearTimeout(debounceTimeOut.current)
-        if (searchQuery.trim() === '') {
-            fetchLostItems();
-        } else {
-            debounceTimeOut.current = setTimeout(() => {
-                handleSearch(searchQuery);
-            }, 400);
-        }
-        return () => clearTimeout(debounceTimeOut.current);
-    }, [searchQuery])
-
-    async function fetchLostItems() {
-        try {
-            const collectionRef = collection(db, "lostItems")
-            const q = query(collectionRef, orderBy("isFound"))
-            const querySnapshot = await getDocs(q)
-
-            const items = querySnapshot.docs.map(doc => {
-                const data = doc.data();
-                const date = data.dateLost?.toDate();
-
-                return {
-                    id: doc.id,
-                    ...data,
-                    dateLost: date ? `${String(date.getDate()).padStart(2, '0')}/${String(date.getMonth() + 1).padStart(2, '0')}/${date.getFullYear()}` : null,
-                };
-            });
-
-            setLostItems(items);
-        }
-        catch (error) {
+        } catch (error) {
             setModalConfig({
                 type: "error",
                 title: "Error",
-                message: "Error occured, check internet connection"
-            })
-            setModalVisible(true)
-        }
-        finally {
+                message: "Error occurred, check internet connection"
+            });
+            setModalVisible(true);
+        } finally {
             setIsFetching(false);
         }
     }
@@ -381,6 +526,154 @@ export default function LostItemsScreen() {
         </View>
     );
 
+    // Add useEffect to trigger applyFilters when filter states change
+    useEffect(() => {
+        if (searchQuery.trim() === '') {
+            applyFilters();
+        }
+    }, [statusFilter, timeFilter, sortBy]);
+
+    const FilterSection = () => {
+        const filters = {
+            status: [
+                { label: 'All', value: 'all' },
+                { label: 'Found', value: 'found' },
+                { label: 'Not Found', value: 'notFound' }
+            ],
+            time: [
+                { label: 'All Time', value: 'all' },
+                { label: 'Last Week', value: 'week' },
+                { label: 'Last Month', value: 'month' }
+            ],
+            sort: [
+                { label: 'Latest', value: 'latest' },
+                { label: 'Oldest', value: 'oldest' }
+            ]
+        };
+
+        const getActiveLabel = (type) => {
+            let value;
+            switch (type) {
+                case 'status':
+                    value = filters.status.find(f => f.value === statusFilter)?.label;
+                    break;
+                case 'time':
+                    value = filters.time.find(f => f.value === timeFilter)?.label;
+                    break;
+                case 'sort':
+                    value = filters.sort.find(f => f.value === sortBy)?.label;
+                    break;
+            }
+            return value;
+        };
+
+        const handleFilterSelect = (type, value) => {
+            // Update the respective filter state
+            switch (type) {
+                case 'status':
+                    setStatusFilter(value);
+                    break;
+                case 'time':
+                    setTimeFilter(value);
+                    break;
+                case 'sort':
+                    setSortBy(value);
+                    break;
+            }
+
+            // Close the dropdown
+            setActiveDropdown(null);
+
+            // If there's no active search, apply filters immediately
+            if (searchQuery.trim() === '') {
+                // The useEffect will handle calling applyFilters
+            } else {
+                // If there's an active search, re-run the search with new filters
+                handleSearch(searchQuery);
+            }
+        };
+
+        return (
+            <View style={styles.filterContainer}>
+                {/* Filter Buttons with Horizontal Scroll */}
+                <ScrollView
+                    horizontal
+                    showsHorizontalScrollIndicator={false}
+                    contentContainerStyle={styles.filterScrollContent}
+                >
+                    {[
+                        { type: 'status', label: 'Status', icon: 'filter-variant' },
+                        { type: 'time', label: 'Time', icon: 'clock-outline' },
+                        { type: 'sort', label: 'Sort By', icon: 'sort' }
+                    ].map(({ type, label, icon }) => (
+                        <Pressable
+                            key={type}
+                            style={[
+                                styles.filterButton,
+                                activeDropdown === type && styles.filterButtonActive
+                            ]}
+                            onPress={() => setActiveDropdown(activeDropdown === type ? null : type)}
+                        >
+                            <MaterialCommunityIcons
+                                name={icon}
+                                size={16}
+                                color={activeDropdown === type ? "#1a73e8" : "#666"}
+                            />
+                            <Text
+                                style={[
+                                    styles.filterButtonText,
+                                    activeDropdown === type && styles.filterButtonTextActive
+                                ]}
+                                numberOfLines={1}
+                            >
+                                {getActiveLabel(type)}
+                            </Text>
+                            <MaterialCommunityIcons
+                                name={activeDropdown === type ? "chevron-up" : "chevron-down"}
+                                size={16}
+                                color={activeDropdown === type ? "#1a73e8" : "#666"}
+                            />
+                        </Pressable>
+                    ))}
+                </ScrollView>
+
+                {/* Dropdown Options */}
+                {activeDropdown && (
+                    <View style={styles.dropdownContainer}>
+                        {filters[activeDropdown].map(option => (
+                            <Pressable
+                                key={option.value}
+                                style={[
+                                    styles.dropdownOption,
+                                    (activeDropdown === 'status' && statusFilter === option.value) ||
+                                        (activeDropdown === 'time' && timeFilter === option.value) ||
+                                        (activeDropdown === 'sort' && sortBy === option.value) ?
+                                        styles.dropdownOptionActive : null
+                                ]}
+                                onPress={() => handleFilterSelect(activeDropdown, option.value)}
+                            >
+                                <Text style={[
+                                    styles.dropdownOptionText,
+                                    (activeDropdown === 'status' && statusFilter === option.value) ||
+                                        (activeDropdown === 'time' && timeFilter === option.value) ||
+                                        (activeDropdown === 'sort' && sortBy === option.value) ?
+                                        styles.dropdownOptionTextActive : null
+                                ]}>
+                                    {option.label}
+                                </Text>
+                                {((activeDropdown === 'status' && statusFilter === option.value) ||
+                                    (activeDropdown === 'time' && timeFilter === option.value) ||
+                                    (activeDropdown === 'sort' && sortBy === option.value)) && (
+                                        <MaterialCommunityIcons name="check" size={16} color="#1a73e8" />
+                                    )}
+                            </Pressable>
+                        ))}
+                    </View>
+                )}
+            </View>
+        );
+    };
+
     return (
         <View style={styles.container}>
             <View style={styles.headerContainer}>
@@ -409,6 +702,8 @@ export default function LostItemsScreen() {
                     )}
                 </View>
             </View>
+
+            <FilterSection />
 
             {isFetching ? (
                 <View style={{ flex: 1, justifyContent: "center" }}>
@@ -678,8 +973,6 @@ const styles = StyleSheet.create({
     searchContainer: {
         padding: 16,
         backgroundColor: '#fff',
-        borderBottomWidth: 1,
-        borderBottomColor: '#e0e0e0',
     },
     searchInputContainer: {
         flexDirection: 'row',
@@ -700,5 +993,78 @@ const styles = StyleSheet.create({
     },
     searchIndicator: {
         marginLeft: 8,
-    }
+    },
+    filterContainer: {
+        backgroundColor: '#fff',
+        zIndex: 1,
+    },
+    filterButtons: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        padding: 12,
+    },
+    filterButton: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        paddingVertical: 8,
+        paddingHorizontal: 12,
+        borderRadius: 8,
+        backgroundColor: '#f5f6f8',
+        borderWidth: 1,
+        borderColor: '#e0e0e0',
+        gap: 6,
+        minWidth: 140,
+        maxWidth: 250,
+    },
+    filterButtonActive: {
+        backgroundColor: '#e8f0fe',
+        borderColor: '#1a73e8',
+    },
+    filterButtonText: {
+        fontSize: 13,
+        color: '#666',
+        fontWeight: '500',
+        flex: 1,
+        textAlign: 'center',
+    },
+    filterButtonTextActive: {
+        color: '#1a73e8',
+        fontWeight: '600',
+    },
+    dropdownContainer: {
+        backgroundColor: '#fff',
+        borderBottomWidth: 1,
+        borderBottomColor: '#e0e0e0',
+        elevation: 4,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.1,
+        shadowRadius: 4,
+        maxHeight: 200,
+    },
+    dropdownOption: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        paddingVertical: 12,
+        paddingHorizontal: 16,
+        borderBottomWidth: 1,
+        borderBottomColor: '#f0f0f0',
+    },
+    dropdownOptionActive: {
+        backgroundColor: '#f8f9ff',
+    },
+    dropdownOptionText: {
+        fontSize: 14,
+        color: '#333',
+    },
+    dropdownOptionTextActive: {
+        color: '#1a73e8',
+        fontWeight: '500',
+    },
+    filterScrollContent: {
+        paddingHorizontal: 12,
+        paddingVertical: 8,
+        gap: 8,
+    },
 });
