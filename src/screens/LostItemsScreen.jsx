@@ -1,8 +1,8 @@
 import { StyleSheet, Text, View, Image, ActivityIndicator, Pressable, Linking, TextInput, Modal, FlatList } from 'react-native'
-import React, { useCallback, useEffect, useState } from 'react'
+import React, { useCallback, useEffect, useRef, useState } from 'react'
 import { useFocusEffect } from '@react-navigation/native';
 import '@react-native-firebase/app';
-import { collection, doc, getDoc, getDocs, getFirestore, orderBy, query, updateDoc } from '@react-native-firebase/firestore';
+import { collection, doc, getDoc, getDocs, getFirestore, orderBy, query, Timestamp, updateDoc, where } from '@react-native-firebase/firestore';
 import { getApp } from '@react-native-firebase/app';
 import ModalPopup from '../components/ModalPopUp';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
@@ -44,6 +44,7 @@ const VerificationPopup = ({ visible, onClose, onVerify, code, setCode }) => {
 
                     <View style={styles.modalButtons}>
                         <Pressable
+                            android_ripple={{ color: '#ddd' }}
                             style={[styles.modalButton, styles.cancelButton]}
                             onPress={onClose}
                         >
@@ -51,6 +52,7 @@ const VerificationPopup = ({ visible, onClose, onVerify, code, setCode }) => {
                         </Pressable>
 
                         <Pressable
+                            android_ripple={{ color: '#ddd' }}
                             disabled={verificationLoading}
                             style={[styles.modalButton, styles.verifyButton]}
                             onPress={() => onVerify(code)}
@@ -77,6 +79,9 @@ export default function LostItemsScreen() {
         title: '',
         message: ''
     });
+    const [searchQuery, setSearchQuery] = useState('');
+    const [isSearching, setIsSearching] = useState(false);
+    const debounceTimeOut = useRef(null)
 
     const handleMarkFound = (itemId) => {
         setSelectedItemId(itemId);
@@ -136,33 +141,97 @@ export default function LostItemsScreen() {
         }
     };
 
+
+    const handleSearch = useCallback(async (text) => {
+        console.log("Debounced call")
+        setIsSearching(true);
+
+        try {
+            const collectionRef = collection(db, "lostItems");
+            const searchText = text.toLowerCase();
+
+            // Create a query that searches in description and location
+            const q = query(
+                collectionRef,
+                where("keywords", "array-contains", searchText.toLowerCase()),
+                orderBy('description')
+            );
+
+            const querySnapshot = await getDocs(q);
+
+            const items = querySnapshot.docs.map(doc => {
+                const data = doc.data();
+                const date = data.dateLost?.toDate();
+
+                return {
+                    id: doc.id,
+                    ...data,
+                    dateLost: date? `${String(date.getDate()).padStart(2, '0')}/${String(date.getMonth() + 1).padStart(2, '0')}/${date.getFullYear()}` : null,
+                };
+            });
+
+            setLostItems(items);
+        }
+        catch (error) {
+            console.log(error)
+            setModalConfig({
+                type: "error",
+                title: "Search Error",
+                message: "Unable to perform search. Please try again."
+            });
+            setModalVisible(true);
+        }
+        finally {
+            setIsSearching(false);
+        }
+    }, [setSearchQuery, setLostItems, setIsSearching]);
+
+    useEffect(() => {
+        clearTimeout(debounceTimeOut.current)
+        if (searchQuery.trim() === '') {
+            fetchLostItems();
+        } else {
+            debounceTimeOut.current = setTimeout(() => {
+                handleSearch(searchQuery);
+            }, 400);
+        }
+        return () => clearTimeout(debounceTimeOut.current);
+    }, [searchQuery])
+
+    async function fetchLostItems() {
+        try {
+            const collectionRef = collection(db, "lostItems")
+            const q = query(collectionRef, orderBy("isFound"))
+            const querySnapshot = await getDocs(q)
+
+            const items = querySnapshot.docs.map(doc => {
+                const data = doc.data();
+                const date = data.dateLost?.toDate();
+
+                return {
+                    id: doc.id,
+                    ...data,
+                    dateLost: date? `${String(date.getDate()).padStart(2, '0')}/${String(date.getMonth() + 1).padStart(2, '0')}/${date.getFullYear()}` : null,
+                };
+            });
+
+            setLostItems(items);
+        }
+        catch (error) {
+            setModalConfig({
+                type: "error",
+                title: "Error",
+                message: "Error occured, check internet connection"
+            })
+            setModalVisible(true)
+        }
+        finally {
+            setIsFetching(false);
+        }
+    }
+
     useFocusEffect(
         useCallback(() => {
-            async function fetchLostItems() {
-                try {
-                    const collectionRef = collection(db, "lostItems")
-                    const q = query(collectionRef, orderBy("isFound"))
-                    const querySnapshot = await getDocs(q)
-
-                    const items = querySnapshot.docs.map(doc => ({
-                        id: doc.id,
-                        ...doc.data(),
-                    }));
-                    setLostItems(items);
-                }
-                catch (error) {
-                    setModalConfig({
-                        type: "error",
-                        title: "Error",
-                        message: "Error occured, check internet connection"
-                    })
-                    setModalVisible(true)
-                }
-                finally {
-                    setIsFetching(false);
-                }
-            }
-
             fetchLostItems();
         }, [])
     );
@@ -239,7 +308,7 @@ export default function LostItemsScreen() {
                                 <View style={styles.iconTextRow}>
                                     <MaterialCommunityIcons name="clock-outline" size={16} color="#2c3e50" />
                                     <Text style={styles.label}> Lost on:  </Text>
-                                    <Text>{new Date(item.dateLost).toLocaleDateString()} at {item.timeLost}</Text>
+                                    <Text>{item.dateLost} at {item.timeLost}</Text>
                                 </View>
                             </Text>
                         </View>
@@ -300,6 +369,7 @@ export default function LostItemsScreen() {
                 )}
                 {!item.isFound && (
                     <Pressable
+                        android_ripple={{ color: '#ddd' }}
                         style={styles.markFoundButton}
                         onPress={() => handleMarkFound(item.id)}
                     >
@@ -315,6 +385,19 @@ export default function LostItemsScreen() {
         <View style={styles.container}>
             <View style={styles.headerContainer}>
                 <Text style={styles.heading}>Lost Items</Text>
+            </View>
+
+            <View style={styles.searchContainer}>
+                <TextInput
+                    style={styles.searchInput}
+                    placeholder="Search by description or location"
+                    placeholderTextColor={'#999'}
+                    value={searchQuery}
+                    onChangeText={setSearchQuery}
+                    returnKeyType="search"
+                    onSubmitEditing={() => handleSearch(searchQuery)}
+                />
+                {isSearching && <ActivityIndicator size={24} color="#1a73e8" style={styles.searchIndicator} />}
             </View>
 
             {isFetching ? (
@@ -358,10 +441,10 @@ export default function LostItemsScreen() {
 const styles = StyleSheet.create({
     container: {
         flex: 1,
-        backgroundColor: '#f5f5f5',
+        backgroundColor: '#fff',
     },
     headerContainer: {
-        backgroundColor: '#f5f5f5',
+        backgroundColor: '#fff',
         padding: 16,
         paddingBottom: 8,
         borderBottomWidth: 1,
@@ -582,4 +665,26 @@ const styles = StyleSheet.create({
         color: '#666',
         textAlign: 'center',
     },
+    searchContainer: {
+        padding: 16,
+        flexDirection: 'row',
+        alignItems: 'center',
+        borderBottomWidth: 1,
+        borderBottomColor: '#ddd',
+        backgroundColor: '#fff',
+    },
+    searchInput: {
+        flex: 1,
+        height: 40,
+        borderWidth: 1,
+        borderColor: '#e0e0e0',
+        borderRadius: 12,
+        paddingHorizontal: 12,
+        fontSize: 16,
+        color: '#333',
+    },
+    searchIndicator: {
+        marginLeft: 8,
+    },
+
 });

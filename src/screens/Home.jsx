@@ -3,7 +3,7 @@ import React, { useState } from 'react';
 import { pick, types } from '@react-native-documents/picker';
 import DatePicker from 'react-native-date-picker';
 import '@react-native-firebase/app';
-import { addDoc, collection, getFirestore } from '@react-native-firebase/firestore';
+import { addDoc, collection, getFirestore, Timestamp } from '@react-native-firebase/firestore';
 import { CLOUDINARY_CLOUD_NAME, CLOUDINARY_UPLOAD_PRESET, CLOUDINARY_URL } from "@env"
 import { Picker } from '@react-native-picker/picker';
 import ModalPopup from '../components/ModalPopUp';
@@ -34,6 +34,8 @@ export default function Home() {
         title: '',
         message: ''
     });
+    const [dateChanged, setDateChanged] = useState(false)
+    const [timeChanged, setTimeChanged] = useState(false)
 
     const validateForm = () => {
         if (!description.trim()) {
@@ -72,6 +74,15 @@ export default function Home() {
             setModalVisible(true);
             return false;
         }
+        if(!dateChanged && !timeChanged){
+            setModalConfig({
+                type: 'error',
+                title: 'Date & Time Required',
+                message: 'Please select the date and time when the item was lost'
+            });
+            setModalVisible(true);
+            return false
+        }
 
         // Basic email validation
         const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -86,6 +97,22 @@ export default function Home() {
         }
         return true;
     };
+
+    function generateKeywords(text) {
+        const words = text.toLowerCase().split(" ");
+        const keywords = [];
+
+        for (let i = 0; i < words.length; i++) {
+            let phrase = words[i];
+            keywords.push(phrase);
+            for (let j = i + 1; j < words.length; j++) {
+                phrase += " " + words[j];
+                keywords.push(phrase);
+            }
+        }
+
+        return keywords;
+    }
 
     const handleSubmit = async () => {
         if (!validateForm()) return;
@@ -124,11 +151,12 @@ export default function Home() {
                 number: number.trim(),
                 isFound: false,
                 verificationCode,
+                keywords: generateKeywords(description.trim() + ' ' + location.trim()),
 
                 ...(itemStatus === 'lost' && {
                     course: course?.trim() || null,
                     year: selectedYear.length > 0 ? selectedYear : null,
-                    dateLost: date.toISOString(),
+                    dateLost: Timestamp.fromDate(date),
                     timeLost: time.toLocaleTimeString()
                 })
             };
@@ -214,14 +242,25 @@ export default function Home() {
 
     // Update the date handler
     const handleDateConfirm = (selectedDate) => {
-        setOpenDate(false)
-        setDate(selectedDate)
+        setOpenDate(false);
+        setDate(selectedDate);
+        setDateChanged(true); // Move the state update here
     }
 
     // Update the time handler
     const handleTimeConfirm = (selectedTime) => {
-        setOpenTime(false)
-        setTime(selectedTime)
+        setOpenTime(false);
+        setTime(selectedTime);
+        setTimeChanged(true); // Move the state update here
+    }
+
+    // Add handlers for opening date/time pickers
+    const handleOpenDate = () => {
+        setOpenDate(true);
+    }
+
+    const handleOpenTime = () => {
+        setOpenTime(true);
     }
 
     // Function to validate description
@@ -451,7 +490,7 @@ export default function Home() {
                             </Text>
                             <Pressable
                                 style={styles.dateTimeButton}
-                                onPress={() => setOpenDate(true)}
+                                onPress={handleOpenDate}  // Use the new handler
                             >
                                 <Text style={styles.dateTimeText}>{date.toLocaleDateString()}</Text>
                                 <MaterialCommunityIcons name="calendar" size={20} color="#666" />
@@ -459,7 +498,7 @@ export default function Home() {
 
                             <Pressable
                                 style={styles.dateTimeButton}
-                                onPress={() => setOpenTime(true)}
+                                onPress={handleOpenTime}  // Use the new handler
                             >
                                 <Text style={styles.dateTimeText}>
                                     {time.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
