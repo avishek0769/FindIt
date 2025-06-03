@@ -1,5 +1,6 @@
 import { View, Text, StyleSheet, ScrollView, Linking, Pressable } from 'react-native'
 import React from 'react'
+import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
 
 export default function About() {
     const handleLink = (url) => {
@@ -45,29 +46,33 @@ export default function About() {
                     <Text style={styles.sectionTitle}>Developer</Text>
                     <View style={styles.developerInfo}>
                         <View style={styles.infoRow}>
+                            <MaterialCommunityIcons name="account" size={20} color="#2c3e50" />
                             <Text style={styles.label}>Name:</Text>
                             <Text style={styles.info}>Avishek Adhikary</Text>
                         </View>
 
-                        <Pressable 
-                            style={styles.infoRow}
-                            onPress={() => handleLink('mailto:avishekadhikary.24@nshm.edu.in')}
-                        >
-                            <Text style={styles.label}>Email:</Text>
-                            <Text style={[styles.info, styles.link]}>
-                                avishekadhikary.24@nshm.edu.in
-                            </Text>
-                        </Pressable>
+                        <View style={styles.socialLinks}>
+                            <Pressable
+                                style={styles.socialButton}
+                                onPress={() => handleLink('mailto:avishekadhikary.24@nshm.edu.in')}
+                            >
+                                <MaterialCommunityIcons name="email" size={24} color="#1a73e8" />
+                            </Pressable>
 
-                        <Pressable 
-                            style={styles.infoRow}
-                            onPress={() => handleLink('https://github.com/avishek0769')}
-                        >
-                            <Text style={styles.label}>GitHub:</Text>
-                            <Text style={[styles.info, styles.link]}>
-                                github.com/avishek0769
-                            </Text>
-                        </Pressable>
+                            <Pressable
+                                style={styles.socialButton}
+                                onPress={() => handleLink('https://github.com/avishek0769')}
+                            >
+                                <MaterialCommunityIcons name="github" size={24} color="#333" />
+                            </Pressable>
+
+                            <Pressable
+                                style={styles.socialButton}
+                                onPress={() => handleLink('https://www.linkedin.com/in/avishekadhikary/')}
+                            >
+                                <MaterialCommunityIcons name="linkedin" size={24} color="#0077b5" />
+                            </Pressable>
+                        </View>
                     </View>
                 </View>
 
@@ -196,24 +201,42 @@ const styles = StyleSheet.create({
     developerInfo: {
         gap: 16,
     },
+    socialLinks: {
+        flexDirection: 'row',
+        justifyContent: 'space-around',
+        gap: 24,
+        marginTop: 16,
+        paddingTop: 16,
+        borderTopWidth: 1,
+        borderTopColor: '#e9ecef',
+    },
+    socialButton: {
+        padding: 8,
+        borderRadius: 8,
+        backgroundColor: '#f8f9fa',
+        elevation: 1,
+        shadowColor: '#000',
+        shadowOffset: {
+            width: 0,
+            height: 1,
+        },
+        shadowOpacity: 0.1,
+        shadowRadius: 2,
+    },
     infoRow: {
         flexDirection: 'row',
         alignItems: 'center',
+        gap: 8,
     },
     label: {
-        width: 70,
         fontSize: 16,
         fontWeight: '600',
         color: '#2c3e50',
-
+        marginRight: 8,
     },
     info: {
         flex: 1,
         fontSize: 16,
         color: '#4a5568',
-    },
-    link: {
-        color: '#1a73e8',
-        textDecorationLine: 'underline',
     },
 });
