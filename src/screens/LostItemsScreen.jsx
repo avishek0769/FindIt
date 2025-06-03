@@ -166,7 +166,7 @@ export default function LostItemsScreen() {
                 return {
                     id: doc.id,
                     ...data,
-                    dateLost: date? `${String(date.getDate()).padStart(2, '0')}/${String(date.getMonth() + 1).padStart(2, '0')}/${date.getFullYear()}` : null,
+                    dateLost: date ? `${String(date.getDate()).padStart(2, '0')}/${String(date.getMonth() + 1).padStart(2, '0')}/${date.getFullYear()}` : null,
                 };
             });
 
@@ -211,7 +211,7 @@ export default function LostItemsScreen() {
                 return {
                     id: doc.id,
                     ...data,
-                    dateLost: date? `${String(date.getDate()).padStart(2, '0')}/${String(date.getMonth() + 1).padStart(2, '0')}/${date.getFullYear()}` : null,
+                    dateLost: date ? `${String(date.getDate()).padStart(2, '0')}/${String(date.getMonth() + 1).padStart(2, '0')}/${date.getFullYear()}` : null,
                 };
             });
 
@@ -388,16 +388,26 @@ export default function LostItemsScreen() {
             </View>
 
             <View style={styles.searchContainer}>
-                <TextInput
-                    style={styles.searchInput}
-                    placeholder="Search by description or location"
-                    placeholderTextColor={'#999'}
-                    value={searchQuery}
-                    onChangeText={setSearchQuery}
-                    returnKeyType="search"
-                    onSubmitEditing={() => handleSearch(searchQuery)}
-                />
-                {isSearching && <ActivityIndicator size={24} color="#1a73e8" style={styles.searchIndicator} />}
+                <View style={styles.searchInputContainer}>
+                    <MaterialCommunityIcons name="magnify" size={20} color="#666" />
+                    <TextInput
+                        style={styles.searchInput}
+                        placeholder="Search by description or location"
+                        placeholderTextColor={'#999'}
+                        value={searchQuery}
+                        onChangeText={setSearchQuery}
+                        returnKeyType="search"
+                        onSubmitEditing={() => handleSearch(searchQuery)}
+                    />
+                    {searchQuery.length > 0 && (
+                        <Pressable onPress={() => setSearchQuery('')}>
+                            <MaterialCommunityIcons name="close" size={20} color="#666" />
+                        </Pressable>
+                    )}
+                    {isSearching && (
+                        <ActivityIndicator size={20} color="#1a73e8" style={styles.searchIndicator} />
+                    )}
+                </View>
             </View>
 
             {isFetching ? (
@@ -667,24 +677,28 @@ const styles = StyleSheet.create({
     },
     searchContainer: {
         padding: 16,
+        backgroundColor: '#fff',
+        borderBottomWidth: 1,
+        borderBottomColor: '#e0e0e0',
+    },
+    searchInputContainer: {
         flexDirection: 'row',
         alignItems: 'center',
-        borderBottomWidth: 1,
-        borderBottomColor: '#ddd',
-        backgroundColor: '#fff',
+        backgroundColor: '#f5f6f8',
+        paddingHorizontal: 12,
+        borderRadius: 12,
+        borderWidth: 1,
+        borderColor: '#e0e0e0',
+        height: 44,
     },
     searchInput: {
         flex: 1,
-        height: 40,
-        borderWidth: 1,
-        borderColor: '#e0e0e0',
-        borderRadius: 12,
-        paddingHorizontal: 12,
         fontSize: 16,
         color: '#333',
+        marginLeft: 8,
+        height: '100%',
     },
     searchIndicator: {
         marginLeft: 8,
-    },
-
+    }
 });
