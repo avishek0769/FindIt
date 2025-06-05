@@ -145,7 +145,6 @@ export default function LostItemsScreen() {
         }
     };
 
-
     const handleSearch = useCallback(async (text) => {
         setIsSearching(true);
 
@@ -238,7 +237,7 @@ export default function LostItemsScreen() {
     useEffect(() => {
         clearTimeout(debounceTimeout.current)
         if (searchQuery.trim() === '') {
-            fetchLostItems();
+            fetchItemsWithAppliedFilters();
         } else {
             debounceTimeout.current = setTimeout(() => {
                 handleSearch(searchQuery);
@@ -248,7 +247,7 @@ export default function LostItemsScreen() {
     }, [searchQuery])
 
     // Add this function to apply filters
-    const applyFilters = async () => {
+    const fetchItemsWithAppliedFilters = async () => {
         setIsFetching(true);
         try {
             const collectionRef = collection(db, "lostItems");
@@ -342,44 +341,6 @@ export default function LostItemsScreen() {
             setIsFetching(false);
         }
     };
-
-    // Update the fetchLostItems function to use the same logic
-    async function fetchLostItems() {
-        setIsFetching(true);
-        try {
-            const collectionRef = collection(db, "lostItems");
-            const q = query(collectionRef, orderBy("isFound", "asc")); // Changed to "asc" so false (Not Found) comes first
-            const querySnapshot = await getDocs(q);
-
-            const items = querySnapshot.docs.map(doc => {
-                const data = doc.data();
-                const date = data.dateLost?.toDate();
-
-                return {
-                    id: doc.id,
-                    ...data,
-                    dateLost: date ? `${String(date.getDate()).padStart(2, '0')}/${String(date.getMonth() + 1).padStart(2, '0')}/${date.getFullYear()}` : null,
-                };
-            });
-
-            setLostItems(items);
-        } catch (error) {
-            setModalConfig({
-                type: "error",
-                title: "Error",
-                message: "Error occurred, check internet connection"
-            });
-            setModalVisible(true);
-        } finally {
-            setIsFetching(false);
-        }
-    }
-
-    useFocusEffect(
-        useCallback(() => {
-            fetchLostItems();
-        }, [])
-    );
 
     const toggleExpand = (itemId) => {
         setExpandedItems(prev => ({
@@ -526,10 +487,10 @@ export default function LostItemsScreen() {
         </View>
     );
 
-    // Add useEffect to trigger applyFilters when filter states change
+    // Add useEffect to trigger fetchItemsWithAppliedFilters when filter states change
     useEffect(() => {
         if (searchQuery.trim() === '') {
-            applyFilters();
+            fetchItemsWithAppliedFilters();
         }
     }, [statusFilter, timeFilter, sortBy]);
 
@@ -586,7 +547,7 @@ export default function LostItemsScreen() {
 
             // If there's no active search, apply filters immediately
             if (searchQuery.trim() === '') {
-                // The useEffect will handle calling applyFilters
+                // The useEffect will handle calling fetchItemsWithAppliedFilters
             } else {
                 // If there's an active search, re-run the search with new filters
                 handleSearch(searchQuery);
