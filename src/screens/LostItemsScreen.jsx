@@ -92,6 +92,7 @@ export default function LostItemsScreen() {
     const initialFetchedDone = useRef(false);
     const [searchLastVisibleDoc, setSearchLastVisibleDoc] = useState(null);
     const [hasMoreSearchItems, setHasMoreSearchItems] = useState(true);
+    const [hideFilterSection, setHideFilterSection] = useState(false);
 
 
     const handleMarkFound = (itemId) => {
@@ -244,10 +245,12 @@ export default function LostItemsScreen() {
 
         clearTimeout(debounceTimeout.current)
         if (searchQuery.trim() === '') {
+            setHideFilterSection(false);
             resetAndFetchItems();
             initialFetchedDone.current = true;
         } else {
             debounceTimeout.current = setTimeout(() => {
+                setHideFilterSection(true);
                 setSearchLastVisibleDoc(null);
                 setHasMoreSearchItems(true);
                 handleSearch(searchQuery, true);
@@ -500,7 +503,6 @@ export default function LostItemsScreen() {
         }
     }, [statusFilter, timeFilter, sortBy]);
 
-
     const FilterSection = () => {
         const filters = {
             status: [
@@ -679,7 +681,7 @@ export default function LostItemsScreen() {
                 </View>
             </View>
 
-            <FilterSection />
+            {!!hideFilterSection? null : <FilterSection />}
 
             {isFetching ? (
                 <View style={{ flex: 1, justifyContent: "center" }}>
@@ -698,7 +700,7 @@ export default function LostItemsScreen() {
                         }
                         !isFetchingMore ? fetchItemsWithAppliedFilters(false) : null;
                     }}
-                    onEndReachedThreshold={0.5}
+                    onEndReachedThreshold={1}
                     ListFooterComponent={isFetchingMore && <ActivityIndicator size="large" color={"#1a73e8"} />}
                     contentContainerStyle={styles.listContainer}
                     showsVerticalScrollIndicator={false}
