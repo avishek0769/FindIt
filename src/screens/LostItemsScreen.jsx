@@ -498,6 +498,7 @@ export default function LostItemsScreen() {
     useEffect(() => {
         if (searchQuery.trim() === '') {
             console.log("Filter Changed");
+            setHideFilterSection(false);
             resetAndFetchItems();
             initialFetchedDone.current = true;
         }
