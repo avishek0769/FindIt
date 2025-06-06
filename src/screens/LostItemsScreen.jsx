@@ -90,6 +90,8 @@ export default function LostItemsScreen() {
     const [activeDropdown, setActiveDropdown] = useState(null);
     const debounceTimeout = useRef(null)
     const initialFetchedDone = useRef(false);
+    const [searchLastVisibleDoc, setSearchLastVisibleDoc] = useState(null);
+    const [hasMoreSearchItems, setHasMoreSearchItems] = useState(true);
 
 
     const handleMarkFound = (itemId) => {
@@ -150,94 +152,92 @@ export default function LostItemsScreen() {
         }
     };
 
-    const handleSearch = useCallback(async (text) => {
-        setIsSearching(true);
+    const handleSearch = useCallback(
+        async (text, isInitial = true) => {
+            if (!hasMoreSearchItems && !isInitial) return;
+            setIsSearching(true);
 
-        try {
-            const collectionRef = collection(db, "lostItems");
-            const searchText = text.toLowerCase();
+            try {
+                const collectionRef = collection(db, "lostItems");
+                const searchText = text.toLowerCase();
+                let filters = [where("keywords", "array-contains", searchText)];
 
-            // Create base query with search
-            let q = query(
-                collectionRef,
-                where("keywords", "array-contains", searchText.toLowerCase())
-            );
-
-            // Add status filter to search query
-            if (statusFilter === 'found') {
-                q = query(
-                    collectionRef,
-                    where("keywords", "array-contains", searchText.toLowerCase()),
-                    where("isFound", "==", true)
-                );
-            } else if (statusFilter === 'notFound') {
-                q = query(
-                    collectionRef,
-                    where("keywords", "array-contains", searchText.toLowerCase()),
-                    where("isFound", "==", false)
-                );
-            }
-
-            const querySnapshot = await getDocs(q);
-            let items = querySnapshot.docs.map(doc => {
-                const data = doc.data();
-                const date = data.dateLost?.toDate();
-
-                return {
-                    id: doc.id,
-                    ...data,
-                    dateLost: date ? `${String(date.getDate()).padStart(2, '0')}/${String(date.getMonth() + 1).padStart(2, '0')}/${date.getFullYear()}` : null,
-                    dateObject: date,
-                };
-            });
-
-            // Apply time filter to search results
-            if (timeFilter !== 'all') {
-                const now = new Date();
-                let cutoffDate = new Date();
-
-                if (timeFilter === 'week') {
-                    cutoffDate.setDate(now.getDate() - 7);
-                } else if (timeFilter === 'month') {
-                    cutoffDate.setMonth(now.getMonth() - 1);
+                // Apply status filters
+                if (statusFilter === 'found') {
+                    filters.push(where("isFound", "==", true));
+                } else if (statusFilter === 'notFound') {
+                    filters.push(where("isFound", "==", false));
                 }
 
-                items = items.filter(item => {
-                    if (!item.dateObject) return false;
-                    return item.dateObject >= cutoffDate;
+                // Always sort by dateLost
+                filters.push(orderBy("dateLost", "desc"));
+
+                // Apply pagination
+                if (!isInitial && searchLastVisibleDoc) {
+                    filters.push(startAfter(searchLastVisibleDoc));
+                }
+
+                // Limit results per page
+                filters.push(limit(5));
+
+                const q = query(collectionRef, ...filters);
+                const snapshot = await getDocs(q);
+
+                let items = snapshot.docs.map(doc => {
+                    const data = doc.data();
+                    const date = data.dateLost?.toDate();
+                    return {
+                        id: doc.id,
+                        ...data,
+                        dateLost: date
+                            ? `${String(date.getDate()).padStart(2, '0')}/${String(date.getMonth() + 1).padStart(2, '0')}/${date.getFullYear()}`
+                            : null,
+                        dateObject: date,
+                    };
                 });
-            }
 
-            // Apply sorting to search results
-            items.sort((a, b) => {
-                if (!a.dateObject || !b.dateObject) return 0;
+                // Time filter
+                if (timeFilter !== 'all') {
+                    const now = new Date();
+                    let cutoff = new Date();
+                    if (timeFilter === 'week') cutoff.setDate(now.getDate() - 7);
+                    else if (timeFilter === 'month') cutoff.setMonth(now.getMonth() - 1);
 
-                if (sortBy === 'latest') {
-                    return b.dateObject - a.dateObject;
-                } else {
-                    return a.dateObject - b.dateObject;
+                    items = items.filter(item => item.dateObject && item.dateObject >= cutoff);
                 }
-            });
 
-            // Remove the temporary dateObject
-            items = items.map(item => {
-                const { dateObject, ...itemWithoutDateObject } = item;
-                return itemWithoutDateObject;
-            });
+                // Sort
+                items.sort((a, b) => {
+                    if (!a.dateObject || !b.dateObject) return 0;
+                    return sortBy === 'latest' ? b.dateObject - a.dateObject : a.dateObject - b.dateObject;
+                });
 
-            setLostItems(items);
-        } catch (error) {
-            console.log(error);
-            setModalConfig({
-                type: "error",
-                title: "Search Error",
-                message: "Unable to perform search. Please try again."
-            });
-            setModalVisible(true);
-        } finally {
-            setIsSearching(false);
-        }
-    }, [statusFilter, timeFilter, sortBy]);
+                // Remove temp field
+                const cleanedItems = items.map(({ dateObject, ...rest }) => rest);
+
+                // Set result
+                setLostItems(prev => isInitial ? cleanedItems : [...prev, ...cleanedItems]);
+
+                // Update pagination states
+                if (snapshot.docs.length < 5) setHasMoreSearchItems(false);
+                if (snapshot.docs.length > 0) {
+                    setSearchLastVisibleDoc(snapshot.docs[snapshot.docs.length - 1]);
+                }
+
+            } catch (err) {
+                console.log("Search Error:", err);
+                setModalConfig({
+                    type: "error",
+                    title: "Search Error",
+                    message: "Unable to perform search. Please try again."
+                });
+                setModalVisible(true);
+            } finally {
+                setIsSearching(false);
+            }
+        },
+        [statusFilter, timeFilter, sortBy, searchLastVisibleDoc, hasMoreSearchItems]
+    );
 
     useEffect(() => {
         if (!initialFetchedDone.current) return;
@@ -248,17 +248,18 @@ export default function LostItemsScreen() {
             initialFetchedDone.current = true;
         } else {
             debounceTimeout.current = setTimeout(() => {
-                handleSearch(searchQuery);
+                setSearchLastVisibleDoc(null);
+                setHasMoreSearchItems(true);
+                handleSearch(searchQuery, true);
             }, 400);
         }
         return () => clearTimeout(debounceTimeout.current);
     }, [searchQuery])
 
-
     const fetchItemsWithAppliedFilters = async (isInitial = false) => {
         if (isFetching || (!isInitial && !hasMoreItems)) return;
 
-        if(isInitial) setIsFetching(true);
+        if (isInitial) setIsFetching(true);
         else {
             setIsFetchingMore(true)
             // await new Promise(resolve => setTimeout(resolve, 2500));
@@ -281,7 +282,7 @@ export default function LostItemsScreen() {
             if (!isInitial && lastVisibleDoc) {
                 filters.push(startAfter(lastVisibleDoc));
             }
-            filters.push(limit(3)); // Pagination size
+            filters.push(limit(5)); // Pagination size
 
             const q = query(collectionRef, ...filters);
             const snapshot = await getDocs(q);
@@ -309,7 +310,7 @@ export default function LostItemsScreen() {
             }
 
             // Sorting if needed (optional because dateLost is already ordered)
-            if (sortBy === 'latest') {
+            if (sortBy === 'oldest') {
                 newItems.sort((a, b) => b.dateObject - a.dateObject);
             } else {
                 newItems.sort((a, b) => a.dateObject - b.dateObject);
@@ -344,7 +345,6 @@ export default function LostItemsScreen() {
             setIsFetchingMore(false);
         }
     };
-
 
     const toggleExpand = (itemId) => {
         setExpandedItems(prev => ({
@@ -692,7 +692,11 @@ export default function LostItemsScreen() {
                     keyExtractor={item => item.id}
                     onEndReached={() => {
                         console.log("End reached");
-                        !isFetchingMore? fetchItemsWithAppliedFilters(false) : null;
+                        if (searchQuery.trim() !== ''){
+                            !isSearching ? handleSearch(searchQuery, false) : null;
+                            return
+                        }
+                        !isFetchingMore ? fetchItemsWithAppliedFilters(false) : null;
                     }}
                     onEndReachedThreshold={0.5}
                     ListFooterComponent={isFetchingMore && <ActivityIndicator size="large" color={"#1a73e8"} />}
