@@ -2,7 +2,7 @@ import { StyleSheet, Text, View, Image, ActivityIndicator, Pressable, Linking, T
 import React, { useCallback, useEffect, useRef, useState } from 'react'
 import { useFocusEffect } from '@react-navigation/native';
 import '@react-native-firebase/app';
-import { collection, doc, getDoc, getDocs, getFirestore, orderBy, query, Timestamp, updateDoc, where } from '@react-native-firebase/firestore';
+import { collection, doc, getDoc, getDocs, getFirestore, limit, orderBy, query, startAfter, Timestamp, updateDoc, where } from '@react-native-firebase/firestore';
 import { getApp } from '@react-native-firebase/app';
 import ModalPopup from '../components/ModalPopUp';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
@@ -68,7 +68,9 @@ const VerificationPopup = ({ visible, onClose, onVerify, code, setCode }) => {
 
 export default function LostItemsScreen() {
     const [lostItems, setLostItems] = useState([])
-    const [isFetching, setIsFetching] = useState(true)
+    const [lastVisibleDoc, setLastVisibleDoc] = useState(null);
+    const [hasMoreItems, setHasMoreItems] = useState(true);
+    const [isFetching, setIsFetching] = useState(false);
     const [expandedItems, setExpandedItems] = useState({});
     const [isVerificationVisible, setIsVerificationVisible] = useState(false);
     const [verificationCode, setVerificationCode] = useState('');
@@ -86,6 +88,8 @@ export default function LostItemsScreen() {
     const [sortBy, setSortBy] = useState('latest');
     const [activeDropdown, setActiveDropdown] = useState(null);
     const debounceTimeout = useRef(null)
+    const initialFetchedDone = useRef(false);
+
 
     const handleMarkFound = (itemId) => {
         setSelectedItemId(itemId);
@@ -235,9 +239,12 @@ export default function LostItemsScreen() {
     }, [statusFilter, timeFilter, sortBy]);
 
     useEffect(() => {
+        if (!initialFetchedDone.current) return;
+
         clearTimeout(debounceTimeout.current)
         if (searchQuery.trim() === '') {
-            fetchItemsWithAppliedFilters();
+            resetAndFetchItems();
+            initialFetchedDone.current = true;
         } else {
             debounceTimeout.current = setTimeout(() => {
                 handleSearch(searchQuery);
@@ -246,101 +253,91 @@ export default function LostItemsScreen() {
         return () => clearTimeout(debounceTimeout.current);
     }, [searchQuery])
 
-    // Add this function to apply filters
-    const fetchItemsWithAppliedFilters = async () => {
-        setIsFetching(true);
+
+    const fetchItemsWithAppliedFilters = async (isInitial = false) => {
+        if (isFetching || (!isInitial && !hasMoreItems)) return;
+
+        if(isInitial) setIsFetching(true);
+        console.log("isInitial:", isInitial);
+
         try {
             const collectionRef = collection(db, "lostItems");
-            let q;
 
-            // Base query with status filter
+            let filters = [];
+
             if (statusFilter === 'found') {
-                q = query(collectionRef, where("isFound", "==", true));
+                filters.push(where("isFound", "==", true));
             } else if (statusFilter === 'notFound') {
-                q = query(collectionRef, where("isFound", "==", false));
+                filters.push(where("isFound", "==", false));
             } else {
-                // For 'all' status, get all documents and order by isFound (Not Found first)
-                q = query(collectionRef, orderBy("isFound", "asc"));
+                filters.push(orderBy("isFound", "asc"));
             }
 
-            const querySnapshot = await getDocs(q);
-            let items = querySnapshot.docs.map(doc => {
+            filters.push(orderBy("dateLost", "desc")); // Always sort by dateLost
+            if (!isInitial && lastVisibleDoc) {
+                filters.push(startAfter(lastVisibleDoc));
+            }
+            filters.push(limit(3)); // Pagination size
+
+            const q = query(collectionRef, ...filters);
+            const snapshot = await getDocs(q);
+
+            let newItems = snapshot.docs.map(doc => {
                 const data = doc.data();
                 const date = data.dateLost?.toDate();
-
                 return {
                     id: doc.id,
                     ...data,
                     dateLost: date ? `${String(date.getDate()).padStart(2, '0')}/${String(date.getMonth() + 1).padStart(2, '0')}/${date.getFullYear()}` : null,
-                    dateObject: date, // Keep original date for filtering
+                    dateObject: date,
                 };
             });
 
             // Apply time filter
             if (timeFilter !== 'all') {
                 const now = new Date();
-                let cutoffDate = new Date();
+                const cutoff = new Date();
+                if (timeFilter === 'week') cutoff.setDate(now.getDate() - 7);
+                else if (timeFilter === 'month') cutoff.setMonth(now.getMonth() - 1);
 
-                if (timeFilter === 'week') {
-                    cutoffDate.setDate(now.getDate() - 7);
-                } else if (timeFilter === 'month') {
-                    cutoffDate.setMonth(now.getMonth() - 1);
-                }
-
-                items = items.filter(item => {
-                    if (!item.dateObject) return false;
-                    return item.dateObject >= cutoffDate;
-                });
+                newItems = newItems.filter(item => item.dateObject && item.dateObject >= cutoff);
             }
 
-            // Apply sorting (only if status is 'all', otherwise maintain the natural order)
-            if (statusFilter === 'all') {
-                items.sort((a, b) => {
-                    // First sort by isFound status (Not Found first)
-                    if (a.isFound !== b.isFound) {
-                        return a.isFound ? 1 : -1; // false (Not Found) comes first
-                    }
-
-                    // Then sort by date within each status group
-                    if (!a.dateObject || !b.dateObject) return 0;
-
-                    if (sortBy === 'latest') {
-                        return b.dateObject - a.dateObject;
-                    } else {
-                        return a.dateObject - b.dateObject;
-                    }
-                });
+            // Sorting if needed (optional because dateLost is already ordered)
+            if (sortBy === 'latest') {
+                newItems.sort((a, b) => b.dateObject - a.dateObject);
             } else {
-                // For specific status filters, just sort by date
-                items.sort((a, b) => {
-                    if (!a.dateObject || !b.dateObject) return 0;
-
-                    if (sortBy === 'latest') {
-                        return b.dateObject - a.dateObject;
-                    } else {
-                        return a.dateObject - b.dateObject;
-                    }
-                });
+                newItems.sort((a, b) => a.dateObject - b.dateObject);
             }
 
-            // Remove the temporary dateObject before setting state
-            items = items.map(item => {
-                const { dateObject, ...itemWithoutDateObject } = item;
-                return itemWithoutDateObject;
-            });
+            // Remove temp fields
+            newItems = newItems.map(({ dateObject, ...rest }) => rest);
 
-            setLostItems(items);
-        } catch (error) {
+            setLostItems(prev => isInitial ? newItems : [...prev, ...newItems]);
+
+            // Update pagination states
+            if (snapshot.docs.length < 2) {
+                setHasMoreItems(false);
+            }
+
+            if (snapshot.docs.length > 0) {
+                setLastVisibleDoc(snapshot.docs[snapshot.docs.length - 1]);
+            }
+
+        } catch (err) {
+            console.error("Error in pagination:", err);
             setModalConfig({
                 type: "error",
-                title: "Filter Error",
-                message: "Unable to apply filters. Please try again."
+                title: "Fetch Error",
+                message: "Could not load more items. Please try again.",
             });
             setModalVisible(true);
         } finally {
             setIsFetching(false);
         }
     };
+
+
 
     const toggleExpand = (itemId) => {
         setExpandedItems(prev => ({
@@ -490,9 +487,12 @@ export default function LostItemsScreen() {
     // Add useEffect to trigger fetchItemsWithAppliedFilters when filter states change
     useEffect(() => {
         if (searchQuery.trim() === '') {
-            fetchItemsWithAppliedFilters();
+            console.log("Filter Changed");
+            resetAndFetchItems();
+            initialFetchedDone.current = true;
         }
     }, [statusFilter, timeFilter, sortBy]);
+
 
     const FilterSection = () => {
         const filters = {
@@ -635,6 +635,14 @@ export default function LostItemsScreen() {
         );
     };
 
+    const resetAndFetchItems = () => {
+        setLastVisibleDoc(null);
+        setHasMoreItems(true);
+        setLostItems([]);
+        fetchItemsWithAppliedFilters(true); // true = initial load
+    };
+
+
     return (
         <View style={styles.container}>
             <View style={styles.headerContainer}>
@@ -675,6 +683,12 @@ export default function LostItemsScreen() {
                     data={lostItems}
                     renderItem={renderItem}
                     keyExtractor={item => item.id}
+                    onEndReached={() => {
+                        console.log("End reached");
+                        fetchItemsWithAppliedFilters(false); // ✅ Must be false
+                    }}
+                    onEndReachedThreshold={0.5}
+                    ListFooterComponent={isFetching && <ActivityIndicator size="small" />}
                     contentContainerStyle={styles.listContainer}
                     showsVerticalScrollIndicator={false}
                     ListEmptyComponent={() => (
@@ -682,7 +696,12 @@ export default function LostItemsScreen() {
                             <Text style={styles.emptyText}>No lost items found</Text>
                         </View>
                     )}
+                    removeClippedSubviews={true}
+                    initialNumToRender={5}
+                    maxToRenderPerBatch={10}
+                    windowSize={7}
                 />
+
             )}
 
             <VerificationPopup
