@@ -1,8 +1,7 @@
 import { StyleSheet, Text, View, Image, ActivityIndicator, Pressable, Linking, TextInput, Modal, FlatList, ScrollView } from 'react-native'
 import React, { useCallback, useEffect, useRef, useState } from 'react'
-import { useFocusEffect } from '@react-navigation/native';
 import '@react-native-firebase/app';
-import { collection, doc, getDoc, getDocs, getFirestore, limit, orderBy, query, startAfter, Timestamp, updateDoc, where } from '@react-native-firebase/firestore';
+import firestore, { collection, doc, getDoc, getDocs, getFirestore, limit, orderBy, query, startAfter, Timestamp, updateDoc, where } from '@react-native-firebase/firestore';
 import { getApp } from '@react-native-firebase/app';
 import ModalPopup from '../components/ModalPopUp';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
@@ -163,34 +162,44 @@ export default function LostItemsScreen() {
             setIsSearching(true);
 
             try {
-                const collectionRef = collection(db, "lostItems");
-                const searchText = text.toLowerCase();
-                let filters = [where("keywords", "array-contains", searchText)];
+                const searchText = text.trim().toLowerCase();
 
-                // Apply status filters
-                if (statusFilter === 'found') {
-                    filters.push(where("isFound", "==", true));
-                } else if (statusFilter === 'notFound') {
-                    filters.push(where("isFound", "==", false));
-                }
+                // 1. Search in lostItemsKeywords collection where array-contains matches
+                let keywordFilters = [
+                    where("keywords", "array-contains", searchText)
+                ];
 
-                // Always sort by dateLost
-                filters.push(orderBy("dateLost", "desc"));
-
-                // Apply pagination
                 if (!isInitial && searchLastVisibleDoc) {
-                    filters.push(startAfter(searchLastVisibleDoc));
+                    keywordFilters.push(startAfter(searchLastVisibleDoc));
                 }
 
-                // Limit results per page
-                filters.push(limit(5));
+                keywordFilters.push(limit(5)); // pagination size
 
-                const q = query(collectionRef, ...filters);
-                const snapshot = await getDocs(q);
+                const keywordQuery = query(collection(db, "lostItemsKeywords"), ...keywordFilters);
+                const keywordSnapshot = await getDocs(keywordQuery);
 
-                let items = snapshot.docs.map(doc => {
+                const matchingItemIds = keywordSnapshot.docs.map(doc => doc.data().itemId);
+
+                if (matchingItemIds.length === 0) {
+                    if (isInitial) setLostItems([]);
+                    setHasMoreSearchItems(false);
+                    return;
+                }
+
+                // Firestore allows 'in' query with max 10 items
+                const itemChunks = matchingItemIds.slice(0, 10); // if more than 10, you can loop in future
+
+                const lostItemsQuery = query(
+                    collection(db, "lostItems"),
+                    where(firestore.FieldPath.documentId(), "in", itemChunks)
+                );
+
+                const lostItemsSnapshot = await getDocs(lostItemsQuery);
+
+                let items = lostItemsSnapshot.docs.map(doc => {
                     const data = doc.data();
                     const date = data.dateLost?.toDate();
+
                     return {
                         id: doc.id,
                         ...data,
@@ -201,36 +210,43 @@ export default function LostItemsScreen() {
                     };
                 });
 
-                // Time filter
-                if (timeFilter !== 'all') {
-                    const now = new Date();
-                    let cutoff = new Date();
-                    if (timeFilter === 'week') cutoff.setDate(now.getDate() - 7);
-                    else if (timeFilter === 'month') cutoff.setMonth(now.getMonth() - 1);
+                // 2. Apply time and status filters
+                items = items.filter(item => {
+                    const validStatus =
+                        statusFilter === "all" ||
+                        (statusFilter === "found" && item.isFound) ||
+                        (statusFilter === "notFound" && !item.isFound);
 
-                    items = items.filter(item => item.dateObject && item.dateObject >= cutoff);
-                }
+                    if (!validStatus) return false;
 
-                // Sort
-                items.sort((a, b) => {
-                    if (!a.dateObject || !b.dateObject) return 0;
-                    return sortBy === 'latest' ? b.dateObject - a.dateObject : a.dateObject - b.dateObject;
+                    if (timeFilter !== "all") {
+                        const now = new Date();
+                        let cutoff = new Date();
+                        if (timeFilter === "week") cutoff.setDate(now.getDate() - 7);
+                        else if (timeFilter === "month") cutoff.setMonth(now.getMonth() - 1);
+                        if (!item.dateObject || item.dateObject < cutoff) return false;
+                    }
+
+                    return true;
                 });
 
-                // Remove temp field
+                // 3. Sort
+                items.sort((a, b) => {
+                    if (!a.dateObject || !b.dateObject) return 0;
+                    return sortBy === "latest" ? b.dateObject - a.dateObject : a.dateObject - b.dateObject;
+                });
+
                 const cleanedItems = items.map(({ dateObject, ...rest }) => rest);
 
-                // Set result
                 setLostItems(prev => isInitial ? cleanedItems : [...prev, ...cleanedItems]);
 
-                // Update pagination states
-                if (snapshot.docs.length < 5) setHasMoreSearchItems(false);
-                if (snapshot.docs.length > 0) {
-                    setSearchLastVisibleDoc(snapshot.docs[snapshot.docs.length - 1]);
+                if (keywordSnapshot.docs.length < 5) setHasMoreSearchItems(false);
+                if (keywordSnapshot.docs.length > 0) {
+                    setSearchLastVisibleDoc(keywordSnapshot.docs[keywordSnapshot.docs.length - 1]);
                 }
 
             } catch (err) {
-                console.log("Search Error:", err);
+                console.error("Search Error:", err);
                 setModalConfig({
                     type: "error",
                     title: "Search Error",
@@ -243,6 +259,7 @@ export default function LostItemsScreen() {
         },
         [statusFilter, timeFilter, sortBy, searchLastVisibleDoc, hasMoreSearchItems]
     );
+
 
     useEffect(() => {
         if (!initialFetchedDone.current) return;
@@ -291,7 +308,7 @@ export default function LostItemsScreen() {
             }
             filters.push(limit(5)); // Pagination size
 
-            const q = query(collectionRef, ...filters);
+            const q = query(collectionRef, ...filters)
             const snapshot = await getDocs(q);
 
             let newItems = snapshot.docs.map(doc => {
@@ -336,7 +353,6 @@ export default function LostItemsScreen() {
             if (snapshot.docs.length > 0) {
                 setLastVisibleDoc(snapshot.docs[snapshot.docs.length - 1]);
             }
-
         }
         catch (err) {
             console.error("Error in pagination:", err);

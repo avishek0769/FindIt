@@ -74,7 +74,7 @@ export default function Home() {
             setModalVisible(true);
             return false;
         }
-        if(!dateChanged && !timeChanged){
+        if (!dateChanged && !timeChanged) {
             setModalConfig({
                 type: 'error',
                 title: 'Date & Time Required',
@@ -99,19 +99,22 @@ export default function Home() {
     };
 
     function generateKeywords(text) {
-        const words = text.toLowerCase().split(" ");
-        const keywords = [];
+        const words = text
+            .toLowerCase()
+            .split(/\s+/) // handles multiple spaces
+            .filter(word => word.length > 2); // remove very short/noisy words
 
-        for (let i = 0; i < words.length; i++) {
-            let phrase = words[i];
-            keywords.push(phrase);
-            for (let j = i + 1; j < words.length; j++) {
-                phrase += " " + words[j];
-                keywords.push(phrase);
-            }
+        const keywords = new Set();
+
+        // Add single keywords
+        words.forEach(word => keywords.add(word));
+
+        // Add 2-word combinations only
+        for (let i = 0; i < words.length - 1; i++) {
+            keywords.add(words[i] + " " + words[i + 1]);
         }
 
-        return keywords;
+        return Array.from(keywords);
     }
 
     const handleSubmit = async () => {
@@ -120,7 +123,7 @@ export default function Home() {
         setIsSubmitting(true);
         try {
             let uploadedImageUrl = null;
-            let verificationCode = Math.floor(Math.random() * (999999 - 100000 + 1)) + 100000;
+            const verificationCode = Math.floor(Math.random() * (999999 - 100000 + 1)) + 100000;
             const defaultTTL = 180 * 24 * 60 * 60 * 1000;
 
             if (selectedImage) {
@@ -143,6 +146,8 @@ export default function Home() {
                 console.log('Uploaded image URL:', uploadedImageUrl);
             }
 
+            const generatedKeywords = generateKeywords(description.trim() + ' ' + location.trim());
+
             const itemData = {
                 fullname: fullname.trim(),
                 description: description.trim(),
@@ -152,7 +157,6 @@ export default function Home() {
                 number: number.trim(),
                 isFound: false,
                 verificationCode,
-                keywords: generateKeywords(description.trim() + ' ' + location.trim()),
                 deleteAt: Timestamp.fromDate(new Date(Date.now() + defaultTTL)),
 
                 ...(itemStatus === 'lost' && {
@@ -162,14 +166,18 @@ export default function Home() {
                     timeLost: time.toLocaleTimeString()
                 })
             };
-            console.log('Submitting item:', itemData);
 
             if (itemStatus === 'lost') {
-                const collectionRef = collection(db, "lostItems")
-                const firebaseResponse = await addDoc(collectionRef, itemData)
+                const lostItemsRef = collection(db, "lostItems");
+                const lostItemDoc = await addDoc(lostItemsRef, itemData);
 
-                if (firebaseResponse && firebaseResponse.id) {
-                    // Send Verification code
+                if (lostItemDoc && lostItemDoc.id) {
+                    const keywordsRef = collection(db, "lostItemsKeywords");
+                    await addDoc(keywordsRef, {
+                        itemId: lostItemDoc.id,
+                        keywords: generatedKeywords
+                    });
+
                     const res = await fetch("https://findit.nexus-network.tech/send-email", {
                         method: "POST",
                         headers: {
@@ -179,10 +187,10 @@ export default function Home() {
                             to: email,
                             code: verificationCode
                         })
-                    })
-                    // console.log(await res.text())
-                    const resendResponse = await res.json()
-                    console.log(resendResponse)
+                    });
+
+                    const resendResponse = await res.json();
+                    console.log(resendResponse);
 
                     if (resendResponse.messageId) {
                         setModalConfig({
@@ -190,46 +198,45 @@ export default function Home() {
                             title: 'Success!',
                             message: `Item ${itemStatus === 'lost' ? 'lost' : 'found'} report submitted successfully!`
                         });
-                        setModalVisible(true);
-                        setSelectedImage(null);
-                        setDescription('');
-                        setLocation('');
-                        setDate(new Date());
-                        setTime(new Date());
-                        setEmail('');
-                        setFullname('');
-                        setNumber('');
-                        setCourse('');
-                        setSelectedYear('');
-                        setItemStatus('lost');
-                    }
-                    else {
+                    } else {
                         setModalConfig({
                             type: 'warning',
                             title: 'Warning',
-                            message: "Report submitted, but an error occured while sending the email"
+                            message: "Report submitted, but an error occurred while sending the email"
                         });
-                        setModalVisible(true);
                     }
+
+                    setModalVisible(true);
+
+                    // Clear form
+                    setSelectedImage(null);
+                    setDescription('');
+                    setLocation('');
+                    setDate(new Date());
+                    setTime(new Date());
+                    setEmail('');
+                    setFullname('');
+                    setNumber('');
+                    setCourse('');
+                    setSelectedYear('');
+                    setItemStatus('lost');
                 }
+            } else {
+                // Future handling for 'found' items if needed
             }
-            else {
-                // const firebaseResponse = await firestore().collection("foundItems").add(itemData)
-            }
-        }
-        catch (error) {
-            console.error(error)
+        } catch (error) {
+            console.error(error);
             setModalConfig({
                 type: 'error',
                 title: 'Error',
                 message: "Failed to submit report. Check internet connection"
             });
             setModalVisible(true);
-        }
-        finally {
+        } finally {
             setIsSubmitting(false);
         }
     };
+
 
     const handleImagePick = async () => {
         try {

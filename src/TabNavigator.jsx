@@ -4,7 +4,6 @@ import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import Icon from 'react-native-vector-icons/MaterialIcons';
 import Home from './screens/Home';
 import LostItemsScreen from './screens/LostItemsScreen';
-import FoundItemsScreen from './screens/FoundItemsScreen';
 import About from './screens/About';
 
 const Tab = createBottomTabNavigator();
@@ -23,9 +22,6 @@ export default function Tabs() {
                             break;
                         case 'Lost Items':
                             iconName = 'cancel';
-                            break;
-                        case 'Found Items':
-                            iconName = 'search';
                             break;
                         case 'About':
                             iconName = 'info';
@@ -48,7 +44,6 @@ export default function Tabs() {
         >
             <Tab.Screen name="Home" component={Home} />
             <Tab.Screen name="Lost Items" component={LostItemsScreen} />
-            {/* <Tab.Screen name="Found Items" component={FoundItemsScreen} /> */}
             <Tab.Screen name="About" component={About} />
         </Tab.Navigator>
     );
