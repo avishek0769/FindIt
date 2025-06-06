@@ -71,6 +71,7 @@ export default function LostItemsScreen() {
     const [lastVisibleDoc, setLastVisibleDoc] = useState(null);
     const [hasMoreItems, setHasMoreItems] = useState(true);
     const [isFetching, setIsFetching] = useState(false);
+    const [isFetchingMore, setIsFetchingMore] = useState(false);
     const [expandedItems, setExpandedItems] = useState({});
     const [isVerificationVisible, setIsVerificationVisible] = useState(false);
     const [verificationCode, setVerificationCode] = useState('');
@@ -258,7 +259,10 @@ export default function LostItemsScreen() {
         if (isFetching || (!isInitial && !hasMoreItems)) return;
 
         if(isInitial) setIsFetching(true);
-        console.log("isInitial:", isInitial);
+        else {
+            setIsFetchingMore(true)
+            await new Promise(resolve => setTimeout(resolve, 2500));
+        }
 
         try {
             const collectionRef = collection(db, "lostItems");
@@ -292,6 +296,7 @@ export default function LostItemsScreen() {
                     dateObject: date,
                 };
             });
+            console.log(newItems)
 
             // Apply time filter
             if (timeFilter !== 'all') {
@@ -324,7 +329,8 @@ export default function LostItemsScreen() {
                 setLastVisibleDoc(snapshot.docs[snapshot.docs.length - 1]);
             }
 
-        } catch (err) {
+        }
+        catch (err) {
             console.error("Error in pagination:", err);
             setModalConfig({
                 type: "error",
@@ -332,11 +338,12 @@ export default function LostItemsScreen() {
                 message: "Could not load more items. Please try again.",
             });
             setModalVisible(true);
-        } finally {
+        }
+        finally {
             setIsFetching(false);
+            setIsFetchingMore(false);
         }
     };
-
 
 
     const toggleExpand = (itemId) => {
@@ -685,10 +692,10 @@ export default function LostItemsScreen() {
                     keyExtractor={item => item.id}
                     onEndReached={() => {
                         console.log("End reached");
-                        fetchItemsWithAppliedFilters(false); // ✅ Must be false
+                        !isFetchingMore? fetchItemsWithAppliedFilters(false) : null;
                     }}
                     onEndReachedThreshold={0.5}
-                    ListFooterComponent={isFetching && <ActivityIndicator size="small" />}
+                    ListFooterComponent={isFetchingMore && <ActivityIndicator size="large" color={"#1a73e8"} />}
                     contentContainerStyle={styles.listContainer}
                     showsVerticalScrollIndicator={false}
                     ListEmptyComponent={() => (
@@ -701,7 +708,6 @@ export default function LostItemsScreen() {
                     maxToRenderPerBatch={10}
                     windowSize={7}
                 />
-
             )}
 
             <VerificationPopup
