@@ -261,7 +261,7 @@ export default function LostItemsScreen() {
         if(isInitial) setIsFetching(true);
         else {
             setIsFetchingMore(true)
-            await new Promise(resolve => setTimeout(resolve, 2500));
+            // await new Promise(resolve => setTimeout(resolve, 2500));
         }
 
         try {
