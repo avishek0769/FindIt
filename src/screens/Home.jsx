@@ -121,6 +121,7 @@ export default function Home() {
         try {
             let uploadedImageUrl = null;
             let verificationCode = Math.floor(Math.random() * (999999 - 100000 + 1)) + 100000;
+            const defaultTTL = 180 * 24 * 60 * 60 * 1000;
 
             if (selectedImage) {
                 const data = new FormData();
@@ -152,6 +153,7 @@ export default function Home() {
                 isFound: false,
                 verificationCode,
                 keywords: generateKeywords(description.trim() + ' ' + location.trim()),
+                deleteAt: Timestamp.fromDate(new Date(Date.now() + defaultTTL)),
 
                 ...(itemStatus === 'lost' && {
                     course: course?.trim() || null,

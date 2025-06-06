@@ -104,11 +104,15 @@ export default function LostItemsScreen() {
         try {
             const docRef = doc(db, "lostItems", selectedItemId)
             const selectedDoc = await getDoc(docRef)
-            console.log("Selected Doc", selectedDoc)
-            console.log(selectedDoc._data.verificationCode, Number(code))
+
+            const thirtyDaysLater = new Date();
+            thirtyDaysLater.setDate(thirtyDaysLater.getDate() + 30);
 
             if (selectedDoc._data.verificationCode == Number(code)) {
-                await updateDoc(docRef, { isFound: true })
+                await updateDoc(docRef, {
+                    isFound: true,
+                    deleteAt: Timestamp.fromDate(thirtyDaysLater),
+                })
 
                 const updatedItems = lostItems.map(item =>
                     item.id === selectedItemId ? { ...item, isFound: true } : item
@@ -682,7 +686,7 @@ export default function LostItemsScreen() {
                 </View>
             </View>
 
-            {!!hideFilterSection? null : <FilterSection />}
+            {!!hideFilterSection ? null : <FilterSection />}
 
             {isFetching ? (
                 <View style={{ flex: 1, justifyContent: "center" }}>
@@ -695,7 +699,7 @@ export default function LostItemsScreen() {
                     keyExtractor={item => item.id}
                     onEndReached={() => {
                         console.log("End reached");
-                        if (searchQuery.trim() !== ''){
+                        if (searchQuery.trim() !== '') {
                             !isSearching ? handleSearch(searchQuery, false) : null;
                             return
                         }
