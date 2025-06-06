@@ -388,7 +388,7 @@ export default function Home() {
                     </Text>
                     <TextInput
                         placeholderTextColor={'#999'}
-                        placeholder={itemStatus === 'found' ? "Where is the item now?" : "Room no / Area last seen"}
+                        placeholder={itemStatus === 'found' ? "Where is the item now?" : "Lost where exactly? (Room/table row)"}
                         style={styles.input}
                         value={location}
                         onChangeText={setLocation}
@@ -682,7 +682,7 @@ const styles = StyleSheet.create({
         borderWidth: 1.5,
         borderColor: '#e0e0e0',
         borderRadius: 12,
-        paddingHorizontal: 16,
+        paddingHorizontal: 13,
         paddingVertical: 12,
         fontSize: 16,
         backgroundColor: '#fff',

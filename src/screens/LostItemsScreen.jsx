@@ -260,7 +260,6 @@ export default function LostItemsScreen() {
         [statusFilter, timeFilter, sortBy, searchLastVisibleDoc, hasMoreSearchItems]
     );
 
-
     useEffect(() => {
         if (!initialFetchedDone.current) return;
 
@@ -433,7 +432,7 @@ export default function LostItemsScreen() {
                             <Text style={styles.info}>
                                 <View style={styles.iconTextRow}>
                                     <MaterialCommunityIcons name="map-marker" size={16} color="#2c3e50" />
-                                    <Text style={styles.label}> Last seen at:  </Text>
+                                    <Text style={styles.label}> Lost at:  </Text>
                                     <Text>{item.location}</Text>
                                 </View>
                             </Text>

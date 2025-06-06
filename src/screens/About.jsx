@@ -50,6 +50,11 @@ export default function About() {
                             <Text style={styles.label}>Name:</Text>
                             <Text style={styles.info}>Avishek Adhikary</Text>
                         </View>
+                        <View style={[styles.infoRow, ]}>
+                            <MaterialCommunityIcons name="school" size={20} color="#2c3e50" />
+                            <Text style={styles.label}>Course:</Text>
+                            <Text style={styles.info}>BCA, Batch 2024</Text>
+                        </View>
 
                         <View style={styles.socialLinks}>
                             <Pressable
@@ -92,10 +97,11 @@ export default function About() {
 const styles = StyleSheet.create({
     container: {
         flex: 1,
-        backgroundColor: 'white',
+        backgroundColor: '#fff',
     },
     content: {
         padding: 20,
+        paddingTop: 6
     },
     header: {
         alignItems: 'center',
@@ -105,8 +111,8 @@ const styles = StyleSheet.create({
         borderRadius: 16,
     },
     heading: {
-        fontSize: 32,
-        fontWeight: 'bold',
+        fontSize: 36,
+        fontWeight: '800',
         color: '#1a73e8',
         marginBottom: 8,
     },
