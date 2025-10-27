@@ -178,21 +178,25 @@ export default function Home() {
                         keywords: generatedKeywords
                     });
 
-                    const res = await fetch("https://findit.nexus-network.tech/send-email", {
+                    const res = await fetch("https://3e163wy943.execute-api.ap-south-1.amazonaws.com/send-email", {
                         method: "POST",
                         headers: {
                             'Content-Type': 'application/json',
                         },
                         body: JSON.stringify({
                             to: email,
-                            code: verificationCode
+                            code: verificationCode,
+                            photoUrl: uploadedImageUrl,
+                            location,
+                            itemDescription: description,
+                            postedAt: new Date().toLocaleString(),
                         })
                     });
 
                     const resendResponse = await res.json();
                     console.log(resendResponse);
 
-                    if (resendResponse.messageId) {
+                    if (resendResponse.success) {
                         setModalConfig({
                             type: 'success',
                             title: 'Success!',
